@@ -1,5 +1,5 @@
-# Vendr Deploy
-Umbraco Deploy resolvers for Vendr, the eCommerce solution for Umbraco
+# Umbraco Commerce Deploy
+Umbraco Deploy resolvers for Umbraco Commerce
 
 Current primary focus is on syncing store settings, not orders, discounts or gift cards. Discounts and Gift Cards may come later, but right now it's just getting the store settings to work.
 
