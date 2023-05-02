@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net7.0</TargetFrameworks>
+        <Authors>Umbraco</Authors>
+        <Company>Umbraco HQ</Company>
+        <Copyright>Umbraco HQ</Copyright>
+        <Description>Umbraco Deploy serializers for Umbraco Commerce</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://umbraco.com</PackageProjectUrl>
+        <PackageIcon>logo-128.png</PackageIcon>
+        <RepositoryUrl>https://github.com/umbraco/Umbraco.Commerce.Deploy</RepositoryUrl>
+        <PackageTags>umbraco, ecommerce, deploy</PackageTags>
+        <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Umbraco.Commerce.Cms.Startup" Version="12.0.0--rc.preview.11.gf61ed32" />
+        <PackageReference Include="Umbraco.Deploy.Infrastructure" Version="11.1.0" />
+        <PackageReference Include="Umbraco.Deploy.Contrib" Version="11.0.1" />
+    </ItemGroup>
+
+    <!-- Workaround for this bug (replace the analyzer name with the one you need to exclude (filename only, no extension) -->
+    <Target Name="RemoveLuceneAnalyzer" BeforeTargets="CoreCompile">
+        <ItemGroup>
+            <Analyzer Remove="@(Analyzer)" Condition="%(FileName) == 'Lucene.Net.CodeAnalysis.CSharp'" />
+        </ItemGroup>
+    </Target>
+
+</Project>
