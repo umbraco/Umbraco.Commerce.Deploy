@@ -1,4 +1,4 @@
-﻿using Umbraco.Commerce.Core.Events;
+using Umbraco.Commerce.Core.Events;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.Deploy;
@@ -60,7 +60,7 @@ namespace Umbraco.Commerce.Deploy.Composing
         private void InitializeIntegratedEntities()
         {
             // Add in integrated transfer entities
-            _transferEntityService.RegisterTransferEntityType(
+            _transferEntityService.RegisterTransferEntityType<ProductAttributeReadOnly>(
                 UmbracoCommerceConstants.UdiEntityType.ProductAttribute,
                 "Product Attributes",
                 new DeployRegisteredEntityTypeDetailOptions
@@ -85,7 +85,7 @@ namespace Umbraco.Commerce.Deploy.Composing
                 (string nodeId, HttpContext httpContext, out Guid entityId) => Guid.TryParse(nodeId, out entityId));
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
 
-            _transferEntityService.RegisterTransferEntityType(
+            _transferEntityService.RegisterTransferEntityType<ProductAttributePresetReadOnly>(
                 UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset,
                 "Product Attribute Presets",
                 new DeployRegisteredEntityTypeDetailOptions
