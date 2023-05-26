@@ -66,7 +66,7 @@
         "type": "Direct",
         "requested": "[12.0.0-rc1, 13.0.0)",
         "resolved": "12.0.0-rc1",
-        "contentHash": "0EpC6i7AcZF0rB2hrGNG3/o4TqUKgSR6CtasTYIcNXmqldYvOkCKPvJsDDctSP45116/FqU68qQvdos7+WQ2GQ==",
+        "contentHash": "UyR4bAvyB96YhtARHALOglbmUOykXMqoTrRzhCBoW44lkbyi/SeTg5j/RoUV56z0rJjn2mglccsJDZJZWhF+Yg==",
         "dependencies": {
           "Umbraco.Cms.Web.BackOffice": "[12.0.0-rc1, 13.0.0)",
           "Umbraco.Deploy.Core": "12.0.0-rc1",
@@ -3098,7 +3098,7 @@
       "Umbraco.Deploy.Core": {
         "type": "Transitive",
         "resolved": "12.0.0-rc1",
-        "contentHash": "NeVz4EhazJ0s3fP7RsifBKXKDxkyjtRikSSkLCYeoJgl/CDR+yq2z+N1waghoPzisgdT7bYb4EBhdtUIySXEyA==",
+        "contentHash": "lw/ghfvmvKAsVMKW+JGLHe4nGrPwNr0RtXVFsiN9Z8sOyutkkq/m/JkTzE09XS4L/FVXJyM6enFLoU6mZ8TwOw==",
         "dependencies": {
           "Umbraco.Cms.Core": "[12.0.0-rc1, 13.0.0)"
         }
