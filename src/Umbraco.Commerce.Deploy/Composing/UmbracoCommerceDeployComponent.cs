@@ -10,7 +10,9 @@ using System;
 using Umbraco.Extensions;
 using Umbraco.Cms.Core;
 using System.Linq;
-using Umbraco.Deploy.Core;
+using Microsoft.Extensions.DependencyInjection;
+
+using StaticServiceProvider = Umbraco.Cms.Web.Common.DependencyInjection.StaticServiceProvider;
 
 namespace Umbraco.Commerce.Deploy.Composing
 {
@@ -73,10 +75,9 @@ namespace Umbraco.Commerce.Deploy.Composing
                 },
                 false,
                 Cms.Constants.Trees.Stores.Alias,
-                (string routePath, HttpContext httpContext) => MatchesRoutePath(routePath, "productattribute"),
-                (string nodeId, HttpContext httpContext) => MatchesNodeId(
+                (string routePath) => MatchesRoutePath(routePath, "productattribute"),
+                (string nodeId) => MatchesNodeId(
                     nodeId,
-                    httpContext,
                     new Cms.Constants.Trees.Stores.NodeType[]
                     {
                         Cms.Constants.Trees.Stores.NodeType.ProductAttributes,
@@ -98,10 +99,9 @@ namespace Umbraco.Commerce.Deploy.Composing
                 },
                 false,
                 Cms.Constants.Trees.Stores.Alias,
-                (string routePath, HttpContext httpContext) => MatchesRoutePath(routePath, "productattributepreset"),
-                (string nodeId, HttpContext httpContext) => MatchesNodeId(
+                (string routePath) => MatchesRoutePath(routePath, "productattributepreset"),
+                (string nodeId) => MatchesNodeId(
                     nodeId,
-                    httpContext,
                     new Cms.Constants.Trees.Stores.NodeType[]
                     {
                         Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets,
@@ -114,8 +114,9 @@ namespace Umbraco.Commerce.Deploy.Composing
         private static bool MatchesRoutePath(string routePath, string routePartPrefix)
             => routePath.StartsWith($"commerce/commerce/{routePartPrefix}-");
 
-        private static bool MatchesNodeId(string nodeId, HttpContext httpContext, Cms.Constants.Trees.Stores.NodeType[] nodeTypes)
+        private static bool MatchesNodeId(string nodeId, Cms.Constants.Trees.Stores.NodeType[] nodeTypes)
         {
+            var httpContext = StaticServiceProvider.Instance.GetRequiredService<IHttpContextAccessor>().HttpContext;
             var nodeType = httpContext.Request.Query["nodeType"].ToString();
             return nodeTypes.Select(x => x.ToString()).InvariantContains(nodeType);
         }
@@ -190,7 +191,7 @@ namespace Umbraco.Commerce.Deploy.Composing
 
             return _serviceConnectorFactory
                 .GetConnector(udi.EntityType)
-                .GetArtifact(entity, null);
+                .GetArtifact(entity);
         }
     }
 }

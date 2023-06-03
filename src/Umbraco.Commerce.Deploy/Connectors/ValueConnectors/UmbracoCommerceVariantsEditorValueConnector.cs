@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -13,6 +13,8 @@ using Umbraco.Deploy.Core.Connectors.ValueConnectors.Services;
 using Umbraco.Deploy.Contrib.ValueConnectors;
 using Umbraco.Extensions;
 using Microsoft.Extensions.Logging;
+using Umbraco.Deploy.Core;
+using Umbraco.Deploy.Core.Connectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {

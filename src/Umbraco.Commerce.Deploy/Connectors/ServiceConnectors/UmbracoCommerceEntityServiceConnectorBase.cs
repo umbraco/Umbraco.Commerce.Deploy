@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Umbraco.Commerce.Core.Api;
@@ -9,15 +9,18 @@ using Umbraco.Cms.Core.Deploy;
 using Umbraco.Deploy.Core.Exceptions;
 using Umbraco.Deploy.Infrastructure.Artifacts;
 using Umbraco.Deploy.Infrastructure.Connectors.ServiceConnectors;
+using Umbraco.Deploy.Core;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
-    public abstract class UmbracoCommerceEntityServiceConnectorBase<TArtifact, TEntity> : ServiceConnectorBase<TArtifact, GuidUdi, ArtifactDeployState<TArtifact, TEntity>>
+    public abstract class UmbracoCommerceEntityServiceConnectorBase<TArtifact, TEntity> : ServiceConnectorBase2<TArtifact, GuidUdi, ArtifactDeployState<TArtifact, TEntity>>
         where TArtifact : DeployArtifactBase<GuidUdi>
         where TEntity : EntityBase
     {
+#pragma warning disable IDE1006 // Naming Styles
         protected readonly IUmbracoCommerceApi _umbracoCommerceApi;
         protected readonly UmbracoCommerceDeploySettingsAccessor _settingsAccessor;
+#pragma warning restore IDE1006 // Naming Styles
 
         public abstract int[] ProcessPasses { get; }
 
