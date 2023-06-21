@@ -1,43 +1,9 @@
-# Umbraco Commerce Deploy
+# Umbraco Commerce Deploy &middot; [![NuGet](https://img.shields.io/nuget/v/Umbraco.Commerce.Deploy.svg?style=modern&label=nuget)](https://www.nuget.org/packages/Umbraco.Commerce.Deploy/) 
+
 Umbraco Deploy resolvers for Umbraco Commerce
 
-Current primary focus is on syncing store settings, not orders, discounts or gift cards. Discounts and Gift Cards may come later, but right now it's just getting the store settings to work.
+![Umbraco Commerce Deploy](assets/ss_history.png)
 
-## Implemented
+## Copyright
 
-### Settings
-
-#### Serializing
-
-- [x] Serialize Stores
-- [x] Serialize Order Statuses
-- [x] Serialize Shipping Methods (Need to review ImageId)
-- [x] Serialize Payment Methods (Need to review ImageId + Provider Settings)
-- [x] Serialize Countries
-- [x] Serialize Regions
-- [x] Serialize Currencies
-- [x] Serialize Tax Classes
-- [x] Serialize Email Templates
-- [x] Serialize Print Templates
-- [x] Serialize Export Templates
-
-#### Restoring
-
-- [x] Restore Stores
-- [x] Restore Order Statuses
-- [x] Restore Shipping Methods
-- [x] Restore Payment Methods
-- [x] Restore Countries
-- [x] Restore Regions
-- [x] Restore Currencies
-- [x] Restore Tax Classes
-- [x] Restore Email Templates
-- [x] Restore Print Templates
-- [x] Restore Export Templates
-
-### Property Editors
-
-- [x] Store Picker
-- [x] Store Entity Picker
-- [x] Price
-- [x] Variants
+Copyright © 2023 Umbraco HQ. All rights reserved.
