@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -74,8 +74,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 GiftCardDaysValid = entity.GiftCardDaysValid,
                 GiftCardCodeTemplate = entity.GiftCardCodeTemplate,
                 GiftCardPropertyAliases = entity.GiftCardPropertyAliases,
-                GiftCardActivationMethod = (int)entity.GiftCardActivationMethod,
-                OrderEditorConfig = entity.OrderEditorConfig
+                GiftCardActivationMethod = (int)entity.GiftCardActivationMethod
             };
 #pragma warning restore CS0618 // OrderEditorConfig is obsolete
 
@@ -259,7 +258,6 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     .SetGiftCardValidityTimeframe(artifact.GiftCardDaysValid)
                     .SetGiftCardPropertyAliases(artifact.GiftCardPropertyAliases, SetBehavior.Replace)
                     .SetGiftCardActivationMethod((GiftCardActivationMethod)artifact.GiftCardActivationMethod)
-                    .SetOrderEditorConfig(artifact.OrderEditorConfig)
                     .SetSortOrder(artifact.SortOrder);
 #pragma warning restore CS0618 // SetOrderEditorConfig is obsolete
 
