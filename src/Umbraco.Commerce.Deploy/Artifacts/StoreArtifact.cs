@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
@@ -55,8 +55,6 @@ namespace Umbraco.Commerce.Deploy.Artifacts
         public GuidUdi ConfirmationEmailTemplateUdi { get; set; }
 
         public GuidUdi ErrorEmailTemplateUdi { get; set; }
-
-        public string OrderEditorConfig { get; set; }
 
         public IEnumerable<string> AllowedUsers { get; set; }
 
