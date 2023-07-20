@@ -167,7 +167,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 var users = new List<string>();
 
-                foreach (var id in entity.AllowedUsers)
+                foreach (var id in entity.AllowedUsers.OrderBy(x => x.UserId))
                 {
                     var user = _userService.GetByProviderKey(id.UserId);
                     if (user != null)
@@ -190,7 +190,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 var userRoles = new List<string>();
 
-                foreach (var role in entity.AllowedUserRoles)
+                foreach (var role in entity.AllowedUserRoles.OrderBy(x => x.Role))
                 {
                     var userGroup = _userService.GetUserGroupByAlias(role.Role);
                     if (userGroup != null)
