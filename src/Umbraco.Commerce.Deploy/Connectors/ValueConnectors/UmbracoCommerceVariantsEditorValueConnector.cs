@@ -19,7 +19,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
     /// <summary>
     /// A Deploy connector for the Umbraco Commerce Variants Editor property editor
     /// </summary>
-    public class UmbracoCommerceVariantsEditorValueConnector : BlockEditorValueConnector, IValueConnector2
+    public class UmbracoCommerceVariantsEditorValueConnector : BlockEditorValueConnectorTmp, IValueConnector2
     {
         private readonly IUmbracoCommerceApi _umbracoCommerceApi;
 
