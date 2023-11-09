@@ -13,7 +13,7 @@ using Umbraco.Commerce.Cms.PropertyEditors.StorePicker;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
-    public class UmbracoCommerceStoreEntityPickerValueConnector : IValueConnector
+    public class UmbracoCommerceStoreEntityPickerValueConnector : IValueConnector2
     {
         private readonly IDataTypeService _dataTypeService;
         private readonly IUmbracoCommerceApi _umbracoCommerceApi;
@@ -29,7 +29,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             _settingsAccessor = settingsAccessor;
         }
 
-        public string ToArtifact(object value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies)
+        public string ToArtifact(object value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies, IContextCache contextCache)
         {
             var svalue = value as string;
 
@@ -54,7 +54,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             return udi.ToString();
         }
 
-        public object FromArtifact(string value, IPropertyType propertyType, object currentValue)
+        public object FromArtifact(string value, IPropertyType propertyType, object currentValue, IContextCache contextCache)
         {
             if (string.IsNullOrWhiteSpace(value) || !UdiHelper.TryParseGuidUdi(value, out var udi))
                 return null;
