@@ -11,6 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Umbraco.Commerce.Cms.Startup" Version="13.0.0-rc1" />
+    <PackageVersion Include="Umbraco.Core" Version="13.0.0-rc1" /><!-- To remove after v13 RC1 -->
     <PackageVersion Include="Umbraco.Deploy.Infrastructure" Version="13.0.0-rc1" />
   </ItemGroup>
 </Project>
