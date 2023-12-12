@@ -10,7 +10,7 @@ using Umbraco.Cms.Core.Models;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
-    public class UmbracoCommercePriceValueConnector : IValueConnector2
+    public class UmbracoCommercePriceValueConnector : IValueConnector
     {
         private readonly IUmbracoCommerceApi _umbracoCommerceApi;
         private readonly UmbracoCommerceDeploySettingsAccessor _settingsAccessor;

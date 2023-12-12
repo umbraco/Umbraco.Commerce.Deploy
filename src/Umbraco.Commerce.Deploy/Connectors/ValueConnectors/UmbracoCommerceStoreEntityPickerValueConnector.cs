@@ -13,7 +13,7 @@ using Umbraco.Commerce.Cms.PropertyEditors.StorePicker;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
-    public class UmbracoCommerceStoreEntityPickerValueConnector : IValueConnector2
+    public class UmbracoCommerceStoreEntityPickerValueConnector : IValueConnector
     {
         private readonly IDataTypeService _dataTypeService;
         private readonly IUmbracoCommerceApi _umbracoCommerceApi;

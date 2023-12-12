@@ -8,7 +8,7 @@ using Umbraco.Cms.Core.Models;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
-    public class UmbracoCommerceStorePickerValueConnector : IValueConnector2
+    public class UmbracoCommerceStorePickerValueConnector : IValueConnector
     {
         private readonly IUmbracoCommerceApi _umbracoCommerceApi;
         private readonly UmbracoCommerceDeploySettingsAccessor _settingsAccessor;
