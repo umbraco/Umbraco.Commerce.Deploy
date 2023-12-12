@@ -72,7 +72,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 result.Content = FromArtifact(result.Content, propertyEditorAliases, contextCache).ToList();
                 result.Settings = FromArtifact(result.Settings, propertyEditorAliases, contextCache).ToList();
 
-                return JObject.FromObject(result);
+                return JsonConvert.SerializeObject(result, Formatting.None);
             }
 
             return null;
