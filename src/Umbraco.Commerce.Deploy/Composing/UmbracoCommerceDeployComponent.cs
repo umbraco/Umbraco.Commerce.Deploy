@@ -70,6 +70,7 @@ namespace Umbraco.Commerce.Deploy.Composing
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
+                    SupportsImportExport = true
                 },
                 false,
                 Cms.Constants.Trees.Stores.Alias,
@@ -95,6 +96,7 @@ namespace Umbraco.Commerce.Deploy.Composing
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
+                    SupportsImportExport = true
                 },
                 false,
                 Cms.Constants.Trees.Stores.Alias,
