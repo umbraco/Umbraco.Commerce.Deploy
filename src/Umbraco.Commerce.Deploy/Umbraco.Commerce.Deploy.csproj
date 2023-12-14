@@ -8,7 +8,6 @@
     <ItemGroup>
         <PackageReference Include="Umbraco.Commerce.Cms.Startup" />
         <PackageReference Include="Umbraco.Deploy.Infrastructure" />
-        <PackageReference Include="Umbraco.Deploy.Contrib" />
     </ItemGroup>
 
     <!-- Workaround for this bug (replace the analyzer name with the one you need to exclude (filename only, no extension) -->

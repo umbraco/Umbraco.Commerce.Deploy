@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using Umbraco.Commerce.Core.Api;
@@ -23,7 +23,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             _settingsAccessor = settingsAccessor;
         }
 
-        public string ToArtifact(object value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies)
+        public string ToArtifact(object value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies, IContextCache contextCache)
         {
             var svalue = value as string;
 
@@ -52,7 +52,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             return JsonConvert.SerializeObject(dstDict);
         }
 
-        public object FromArtifact(string value, IPropertyType propertyType, object currentValue)
+        public object FromArtifact(string value, IPropertyType propertyType, object currentValue, IContextCache contextCache)
         {
             var svalue = value as string;
 

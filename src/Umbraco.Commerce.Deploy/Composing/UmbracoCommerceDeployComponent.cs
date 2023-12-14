@@ -10,7 +10,6 @@ using System;
 using Umbraco.Extensions;
 using Umbraco.Cms.Core;
 using System.Linq;
-using Umbraco.Deploy.Core;
 
 namespace Umbraco.Commerce.Deploy.Composing
 {
@@ -20,7 +19,8 @@ namespace Umbraco.Commerce.Deploy.Composing
         private readonly IServiceConnectorFactory _serviceConnectorFactory;
         private readonly ITransferEntityService _transferEntityService;
 
-        public UmbracoCommerceDeployComponent(IDiskEntityService diskEntityService,
+        public UmbracoCommerceDeployComponent(
+            IDiskEntityService diskEntityService,
             IServiceConnectorFactory serviceConnectorFactory,
             ITransferEntityService transferEntityService)
         {
@@ -70,6 +70,8 @@ namespace Umbraco.Commerce.Deploy.Composing
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
+                    //SupportsImportExport = true,
+                    //SupportsExportOfDescendants = true
                 },
                 false,
                 Cms.Constants.Trees.Stores.Alias,
@@ -77,12 +79,27 @@ namespace Umbraco.Commerce.Deploy.Composing
                 (string nodeId, HttpContext httpContext) => MatchesNodeId(
                     nodeId,
                     httpContext,
-                    new Cms.Constants.Trees.Stores.NodeType[]
-                    {
+                    [
                         Cms.Constants.Trees.Stores.NodeType.ProductAttributes,
                         Cms.Constants.Trees.Stores.NodeType.ProductAttribute
-                    }),
-                (string nodeId, HttpContext httpContext, out Guid entityId) => Guid.TryParse(nodeId, out entityId));
+                    ]),
+                (string nodeId, HttpContext httpContext, out Guid entityId) =>
+                {
+                    if (Guid.TryParse(nodeId, out entityId))
+                    {
+                        return true;
+                    }
+                    else if (int.TryParse(nodeId, out int id) && id == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributes])
+                    {
+                        entityId = Guid.Empty;
+                        return true;
+                    }
+                    else
+                    {
+                        entityId = Guid.Empty;
+                        return false;
+                    }
+                });
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
 
             _transferEntityService.RegisterTransferEntityType<ProductAttributePresetReadOnly>(
@@ -95,6 +112,8 @@ namespace Umbraco.Commerce.Deploy.Composing
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
+                    //SupportsImportExport = true,
+                    //SupportsExportOfDescendants = true
                 },
                 false,
                 Cms.Constants.Trees.Stores.Alias,
@@ -102,12 +121,27 @@ namespace Umbraco.Commerce.Deploy.Composing
                 (string nodeId, HttpContext httpContext) => MatchesNodeId(
                     nodeId,
                     httpContext,
-                    new Cms.Constants.Trees.Stores.NodeType[]
-                    {
+                    [
                         Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets,
                         Cms.Constants.Trees.Stores.NodeType.ProductAttributePreset
-                    }),
-                (string nodeId, HttpContext httpContext, out Guid entityId) => Guid.TryParse(nodeId, out entityId));
+                    ]),
+                (string nodeId, HttpContext httpContext, out Guid entityId) =>
+                {
+                    if (Guid.TryParse(nodeId, out entityId))
+                    {
+                        return true;
+                    }
+                    else if (int.TryParse(nodeId, out int id) && id == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets])
+                    {
+                        entityId = Guid.Empty;
+                        return true;
+                    }
+                    else
+                    {
+                        entityId = Guid.Empty;
+                        return false;
+                    }
+                });
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
         }
 
@@ -116,6 +150,17 @@ namespace Umbraco.Commerce.Deploy.Composing
 
         private static bool MatchesNodeId(string nodeId, HttpContext httpContext, Cms.Constants.Trees.Stores.NodeType[] nodeTypes)
         {
+            if (int.TryParse(nodeId, out int id))
+            {
+                foreach (var nt in nodeTypes)
+                {
+                    if (Cms.Constants.Trees.Stores.Ids.ContainsKey(nt) && Cms.Constants.Trees.Stores.Ids[nt] == id)
+                    {
+                        return true;
+                    }
+                }
+            }
+
             var nodeType = httpContext.Request.Query["nodeType"].ToString();
             return nodeTypes.Select(x => x.ToString()).InvariantContains(nodeType);
         }
