@@ -1,13 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
-
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+
+using StringExtensions = Umbraco.Commerce.Extensions.StringExtensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -61,6 +63,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 Alias = entity.Alias,
                 Sku = entity.Sku,
                 ImageId = entity.ImageId, // Could be a UDI?
+                CalculationMode = entity.CalculationMode,
+                ShippingProviderAlias = entity.ShippingProviderAlias,
+                ShippingProviderSettings = new SortedDictionary<string, string>(entity.ShippingProviderSettings
+                    .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
+                    .ToDictionary(x => x.Key, x => x.Value)), // Could contain UDIs?
                 SortOrder = entity.SortOrder
             };
 
@@ -75,12 +82,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 artifact.TaxClassUdi = taxClassDepUdi;
             }
 
-            // Service prices
-            if (entity.Prices.Count > 0)
+            // Only the fixed rate shipping provider has delcared dependencies
+            // that we can deserialize. Dynamic can have a dependency, but because
+            // it's config is all plugin based, we can't be certain of the data structure
+            // and so we just have to pass the value through. Realtime rates don't currently
+            // have any dependencies.
+            if (entity.CalculationMode == ShippingCalculationMode.Fixed && entity.CalculationConfig is FixedRateShippingCalculationConfig calcConfig)
             {
                 var servicesPrices = new List<ServicePriceArtifact>();
 
-                foreach (var price in entity.Prices)
+                foreach (var price in calcConfig.Prices)
                 {
                     var spArtifact = new ServicePriceArtifact { Value = price.Value };
 
@@ -117,7 +128,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     servicesPrices.Add(spArtifact);
                 }
 
-                artifact.Prices = servicesPrices;
+                artifact.CalculationConfig = JObject.FromObject(new FixedRateShippingCalculationConfigArtifact
+                {
+                    Prices = servicesPrices
+                });
+            }
+            else
+            {
+                // No additional processing required
+                artifact.CalculationConfig = JObject.FromObject(entity.CalculationConfig);
             }
 
             // Allowed country regions
@@ -183,11 +202,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
                 artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                var entity = state.Entity?.AsWritable(uow) ?? ShippingMethod.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name);
+                var entity = state.Entity?.AsWritable(uow) ?? ShippingMethod.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name, artifact.ShippingProviderAlias, artifact.CalculationMode);
+
+                var settings = artifact.ShippingProviderSettings
+                    .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
+                    .ToDictionary(x => x.Key, x => x.Value);
 
                 entity.SetName(artifact.Name, artifact.Alias)
                     .SetSku(artifact.Sku)
                     .SetImage(artifact.ImageId)
+                    .SetSettings(settings, SetBehavior.Merge)
                     .SetSortOrder(artifact.SortOrder);
 
                 _umbracoCommerceApi.SaveShippingMethod(entity);
@@ -209,7 +233,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 if (artifact.TaxClassUdi != null)
                 {
                     artifact.TaxClassUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
-                    // TODO: Check the payment method exists?
+
                     entity.SetTaxClass(artifact.TaxClassUdi.Guid);
                 }
                 else
@@ -217,54 +241,40 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     entity.ClearTaxClass();
                 }
 
-                // Prices
-                var pricesToRemove = entity.Prices
-                    .Where(x => artifact.Prices == null || !artifact.Prices.Any(y => y.CountryUdi?.Guid == x.CountryId
-                        && y.RegionUdi?.Guid == x.RegionId
-                        && y.CurrencyUdi.Guid == x.CurrencyId))
-                    .ToList();
-
-                if (artifact.Prices != null)
+                // Calculation config
+                if (artifact.CalculationConfig != null)
                 {
-                    foreach (var price in artifact.Prices)
+                    if (artifact.CalculationMode == ShippingCalculationMode.Fixed)
                     {
-                        price.CurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
+                        var cfgArtifact = artifact.CalculationConfig.ToObject<FixedRateShippingCalculationConfigArtifact>();
+                        var prices = new List<ServicePrice>();
 
-                        if (price.CountryUdi == null && price.RegionUdi == null)
+                        foreach (var price in cfgArtifact.Prices)
                         {
-                            entity.SetDefaultPriceForCurrency(price.CurrencyUdi.Guid, price.Value);
-                        }
-                        else
-                        {
-                            price.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
+                            price.CurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
+
+                            if (price.CountryUdi != null)
+                                price.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
                             if (price.RegionUdi != null)
-                            {
                                 price.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
 
-                                entity.SetRegionPriceForCurrency(price.CountryUdi.Guid, price.RegionUdi.Guid, price.CurrencyUdi.Guid, price.Value);
-                            }
-                            else
-                            {
-                                entity.SetCountryPriceForCurrency(price.CountryUdi.Guid, price.CurrencyUdi.Guid, price.Value);
-                            }
+                            prices.Add(new ServicePrice(price.Value, price.CurrencyUdi.Guid, price.CountryUdi?.Guid, price.RegionUdi?.Guid));
                         }
-                    }
-                }
 
-                foreach (var price in pricesToRemove)
-                {
-                    if (price.CountryId == null && price.RegionId == null)
-                    {
-                        entity.ClearDefaultPriceForCurrency(price.CurrencyId);
+                        entity.SetCalculationConfig(new FixedRateShippingCalculationConfig(prices));
                     }
-                    else if (price.CountryId != null && price.RegionId == null)
+                    else if (artifact.CalculationMode == ShippingCalculationMode.Dynamic)
                     {
-                        entity.ClearCountryPriceForCurrency(price.CountryId.Value, price.CurrencyId);
+                        entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<DynamicRateShippingCalculationConfig>());
+                    }
+                    else if (artifact.CalculationMode == ShippingCalculationMode.Realtime)
+                    {
+                        entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<RealtimeRateShippingCalculationConfig>());
                     }
                     else
                     {
-                        entity.ClearRegionPriceForCurrency(price.CountryId.Value, price.RegionId.Value, price.CurrencyId);
+                        throw new ApplicationException($"Unknown calculation mode: {artifact.CalculationMode}");
                     }
                 }
 
