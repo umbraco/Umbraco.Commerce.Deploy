@@ -1,4 +1,4 @@
-﻿namespace Umbraco.Commerce.Deploy
+namespace Umbraco.Commerce.Deploy
 {
     public static class UmbracoCommerceConstants
     {
@@ -11,6 +11,8 @@
             public const string Region = "umbraco-commerce-region";
 
             public const string Currency = "umbraco-commerce-currency";
+
+            public const string Location = "umbraco-commerce-location";
 
             public const string OrderStatus = "umbraco-commerce-order-status";
 
