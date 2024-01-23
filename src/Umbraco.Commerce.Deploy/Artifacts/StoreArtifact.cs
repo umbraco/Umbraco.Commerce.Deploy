@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
-using Umbraco.Commerce.Core.Models;
 using Umbraco.Deploy.Infrastructure.Artifacts;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
@@ -25,7 +24,7 @@ namespace Umbraco.Commerce.Deploy.Artifacts
 
         public GuidUdi ErrorOrderStatusUdi { get; set; }
 
-        public MeasurementSystem MeasurementSystem { get; set; }
+        public int MeasurementSystem { get; set; }
 
         public bool PricesIncludeTax { get; set; }
 

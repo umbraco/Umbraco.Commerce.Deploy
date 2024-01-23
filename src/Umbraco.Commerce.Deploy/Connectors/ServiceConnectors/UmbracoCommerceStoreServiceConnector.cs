@@ -61,7 +61,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 Name = entity.Name,
                 Alias = entity.Alias,
-                MeasurementSystem = entity.MeasurementSystem,
+                MeasurementSystem = (int)entity.MeasurementSystem,
                 PricesIncludeTax = entity.PricesIncludeTax,
                 CookieTimeout = entity.CookieTimeout,
                 CartNumberTemplate = entity.CartNumberTemplate,
@@ -255,7 +255,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
 #pragma warning disable CS0618 // SetOrderEditorConfig is obsolete
                 entity.SetName(artifact.Name, artifact.Alias)
-                    .SetMeasurementSystem(artifact.MeasurementSystem)
+                    .SetMeasurementSystem((MeasurementSystem)artifact.MeasurementSystem)
                     .SetPriceTaxInclusivity(artifact.PricesIncludeTax)
                     .SetCartNumberTemplate(artifact.CartNumberTemplate)
                     .SetOrderNumberTemplate(artifact.OrderNumberTemplate)

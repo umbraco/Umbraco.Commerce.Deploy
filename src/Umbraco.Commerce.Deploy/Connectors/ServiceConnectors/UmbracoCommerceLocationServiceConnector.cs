@@ -63,7 +63,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 Region = entity.Region,
                 CountryIsoCode = entity.CountryIsoCode,
                 ZipCode = entity.ZipCode,
-                Type = entity.Type,
+                Type = (int)entity.Type,
                 SortOrder = entity.SortOrder
             };
         }
@@ -94,7 +94,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 var entity = state.Entity?.AsWritable(uow) ?? Location.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name);
 
                 entity.SetName(artifact.Name, artifact.Alias)
-                    .SetType(artifact.Type)
+                    .SetType((LocationType)artifact.Type)
                     .SetAddress(new Address(artifact.AddressLine1, artifact.AddressLine2, artifact.City, artifact.Region, artifact.CountryIsoCode, artifact.ZipCode))
                     .SetSortOrder(artifact.SortOrder);
 

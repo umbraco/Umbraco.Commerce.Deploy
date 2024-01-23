@@ -17,7 +17,7 @@ namespace Umbraco.Commerce.Deploy.Artifacts
         public string Region { get; set; }
         public string CountryIsoCode { get; set; }
         public string ZipCode { get; set; }
-        public LocationType Type { get; set; }
+        public int Type { get; set; }
         public int SortOrder { get; set; }
     }
 }

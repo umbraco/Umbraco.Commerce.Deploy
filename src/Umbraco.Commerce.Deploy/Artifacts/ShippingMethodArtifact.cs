@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
-using Umbraco.Commerce.Core.Models;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
 {
@@ -20,7 +19,7 @@ namespace Umbraco.Commerce.Deploy.Artifacts
         public IEnumerable<ServicePriceArtifact> Prices { get; set; }
         public string ImageId { get; set; }
 
-        public ShippingCalculationMode CalculationMode { get; set; }
+        public int CalculationMode { get; set; }
         public JObject CalculationConfig { get; set; }
         public string ShippingProviderAlias { get; set; }
         public SortedDictionary<string, string> ShippingProviderSettings { get; set; }

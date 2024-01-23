@@ -63,7 +63,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 Alias = entity.Alias,
                 Sku = entity.Sku,
                 ImageId = entity.ImageId, // Could be a UDI?
-                CalculationMode = entity.CalculationMode,
+                CalculationMode = (int)entity.CalculationMode,
                 ShippingProviderAlias = entity.ShippingProviderAlias,
                 ShippingProviderSettings = new SortedDictionary<string, string>(entity.ShippingProviderSettings
                     .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
@@ -202,7 +202,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
                 artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                var entity = state.Entity?.AsWritable(uow) ?? ShippingMethod.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name, artifact.ShippingProviderAlias, artifact.CalculationMode);
+                var entity = state.Entity?.AsWritable(uow) ?? ShippingMethod.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name, artifact.ShippingProviderAlias, (ShippingCalculationMode)artifact.CalculationMode);
 
                 var settings = artifact.ShippingProviderSettings
                     .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
@@ -244,7 +244,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 // Calculation config
                 if (artifact.CalculationConfig != null)
                 {
-                    if (artifact.CalculationMode == ShippingCalculationMode.Fixed)
+                    if (artifact.CalculationMode == (int)ShippingCalculationMode.Fixed)
                     {
                         var cfgArtifact = artifact.CalculationConfig.ToObject<FixedRateShippingCalculationConfigArtifact>();
                         var prices = new List<ServicePrice>();
@@ -264,11 +264,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                         entity.SetCalculationConfig(new FixedRateShippingCalculationConfig(prices));
                     }
-                    else if (artifact.CalculationMode == ShippingCalculationMode.Dynamic)
+                    else if (artifact.CalculationMode == (int)ShippingCalculationMode.Dynamic)
                     {
                         entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<DynamicRateShippingCalculationConfig>());
                     }
-                    else if (artifact.CalculationMode == ShippingCalculationMode.Realtime)
+                    else if (artifact.CalculationMode == (int)ShippingCalculationMode.Realtime)
                     {
                         entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<RealtimeRateShippingCalculationConfig>());
                     }
