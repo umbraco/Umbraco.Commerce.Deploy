@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Commerce.Core.Models;
 using Umbraco.Deploy.Infrastructure.Artifacts;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
@@ -18,9 +19,13 @@ namespace Umbraco.Commerce.Deploy.Artifacts
 
         public GuidUdi DefaultTaxClassUdi { get; set; }
 
+        public GuidUdi DefaultLocationUdi { get; set; }
+
         public GuidUdi DefaultOrderStatusUdi { get; set; }
 
         public GuidUdi ErrorOrderStatusUdi { get; set; }
+
+        public MeasurementSystem MeasurementSystem { get; set; }
 
         public bool PricesIncludeTax { get; set; }
 
