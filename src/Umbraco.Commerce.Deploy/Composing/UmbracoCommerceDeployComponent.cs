@@ -42,6 +42,7 @@ namespace Umbraco.Commerce.Deploy.Composing
         private void RegisterUdiTypes()
         {
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.Store, UdiType.GuidUdi);
+            UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.Location, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.OrderStatus, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod, UdiType.GuidUdi);
@@ -169,6 +170,7 @@ namespace Umbraco.Commerce.Deploy.Composing
         {
             // Add in settings entities as valid Disk entities that can be written out	
             _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Store);
+            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Location);
             _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.OrderStatus);
             _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
             _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
@@ -185,6 +187,10 @@ namespace Umbraco.Commerce.Deploy.Composing
             // Stores
             EventHub.NotificationEvents.OnStoreSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.Store) }));
             EventHub.NotificationEvents.OnStoreDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.Store) }));
+
+            // Location
+            EventHub.NotificationEvents.OnLocationSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.Location) }));
+            EventHub.NotificationEvents.OnLocationDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.Location) }));
 
             // OrderStatus
             EventHub.NotificationEvents.OnOrderStatusSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.OrderStatus) }));

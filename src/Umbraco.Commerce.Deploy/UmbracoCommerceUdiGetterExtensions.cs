@@ -1,4 +1,4 @@
-﻿using Umbraco.Commerce.Core.Models;
+using Umbraco.Commerce.Core.Models;
 using Umbraco.Cms.Core;
 
 namespace Umbraco.Commerce.Deploy
@@ -15,6 +15,9 @@ namespace Umbraco.Commerce.Deploy
 
             if (entity is RegionReadOnly region)
                 return region.GetUdi();
+
+            if (entity is LocationReadOnly location)
+                return location.GetUdi();
 
             if (entity is OrderStatusReadOnly orderStatus)
                 return orderStatus.GetUdi();
@@ -63,6 +66,9 @@ namespace Umbraco.Commerce.Deploy
 
         public static GuidUdi GetUdi(this RegionReadOnly entity)
             => new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Region, entity.Id);
+
+        public static GuidUdi GetUdi(this LocationReadOnly entity)
+            => new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Location, entity.Id);
 
         public static GuidUdi GetUdi(this OrderStatusReadOnly entity)
             => new GuidUdi(UmbracoCommerceConstants.UdiEntityType.OrderStatus, entity.Id);

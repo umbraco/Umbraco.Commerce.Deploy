@@ -54,8 +54,6 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             if (entity == null)
                 return null;
 
-            // TODO: Add the "defaults" as dependencies?
-
             var dependencies = new ArtifactDependencyCollection();
 
 #pragma warning disable CS0618 // OrderEditorConfig is obsolete
@@ -63,6 +61,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 Name = entity.Name,
                 Alias = entity.Alias,
+                MeasurementSystem = (int)entity.MeasurementSystem,
                 PricesIncludeTax = entity.PricesIncludeTax,
                 CookieTimeout = entity.CookieTimeout,
                 CartNumberTemplate = entity.CartNumberTemplate,
@@ -103,6 +102,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 var dep = new UmbracoCommerceArtifactDependency(depUdi);
                 dependencies.Add(dep);
                 artifact.DefaultTaxClassUdi = depUdi;
+            }
+
+            // Default location
+            if (entity.DefaultLocationId.HasValue)
+            {
+                var depUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Location, entity.DefaultLocationId.Value);
+                var dep = new UmbracoCommerceArtifactDependency(depUdi);
+                dependencies.Add(dep);
+                artifact.DefaultLocationUdi = depUdi;
             }
 
             // Default order status
@@ -247,6 +255,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
 #pragma warning disable CS0618 // SetOrderEditorConfig is obsolete
                 entity.SetName(artifact.Name, artifact.Alias)
+                    .SetMeasurementSystem((MeasurementSystem)artifact.MeasurementSystem)
                     .SetPriceTaxInclusivity(artifact.PricesIncludeTax)
                     .SetCartNumberTemplate(artifact.CartNumberTemplate)
                     .SetOrderNumberTemplate(artifact.OrderNumberTemplate)
@@ -340,6 +349,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 }
 
                 entity.SetDefaultTaxClass(defaultTaxClassId);
+
+                // DefaultLocation
+                Guid? defaultLocationId = null;
+
+                if (artifact.DefaultLocationUdi != null)
+                {
+                    artifact.DefaultLocationUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Location);
+
+                    defaultLocationId = _umbracoCommerceApi.GetLocation(artifact.DefaultLocationUdi.Guid)?.Id;
+                }
+
+                entity.SetDefaultLocation(defaultLocationId);
 
                 // DefaultOrderStatus
                 Guid? defaultOrderStatusId = null;
