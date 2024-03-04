@@ -87,56 +87,59 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             // it's config is all plugin based, we can't be certain of the data structure
             // and so we just have to pass the value through. Realtime rates don't currently
             // have any dependencies.
-            if (entity.CalculationMode == ShippingCalculationMode.Fixed && entity.CalculationConfig is FixedRateShippingCalculationConfig calcConfig)
+            if (entity.CalculationConfig != null)
             {
-                var servicesPrices = new List<ServicePriceArtifact>();
-
-                foreach (var price in calcConfig.Prices)
+                if (entity.CalculationMode == ShippingCalculationMode.Fixed && entity.CalculationConfig is FixedRateShippingCalculationConfig calcConfig)
                 {
-                    var spArtifact = new ServicePriceArtifact { Value = price.Value };
+                    var servicesPrices = new List<ServicePriceArtifact>();
 
-                    // Currency
-                    var currencyDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, price.CurrencyId);
-                    var currencyDep = new UmbracoCommerceArtifactDependency(currencyDepUdi);
-
-                    dependencies.Add(currencyDep);
-
-                    spArtifact.CurrencyUdi = currencyDepUdi;
-
-                    // Country
-                    if (price.CountryId.HasValue)
+                    foreach (var price in calcConfig.Prices)
                     {
-                        var countryDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, price.CountryId.Value);
-                        var countryDep = new UmbracoCommerceArtifactDependency(countryDepUdi);
+                        var spArtifact = new ServicePriceArtifact { Value = price.Value };
 
-                        dependencies.Add(countryDep);
+                        // Currency
+                        var currencyDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, price.CurrencyId);
+                        var currencyDep = new UmbracoCommerceArtifactDependency(currencyDepUdi);
 
-                        spArtifact.CountryUdi = countryDepUdi;
+                        dependencies.Add(currencyDep);
+
+                        spArtifact.CurrencyUdi = currencyDepUdi;
+
+                        // Country
+                        if (price.CountryId.HasValue)
+                        {
+                            var countryDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, price.CountryId.Value);
+                            var countryDep = new UmbracoCommerceArtifactDependency(countryDepUdi);
+
+                            dependencies.Add(countryDep);
+
+                            spArtifact.CountryUdi = countryDepUdi;
+                        }
+
+                        // Region
+                        if (price.RegionId.HasValue)
+                        {
+                            var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Region, price.RegionId.Value);
+                            var regionDep = new UmbracoCommerceArtifactDependency(regionDepUdi);
+
+                            dependencies.Add(regionDep);
+
+                            spArtifact.RegionUdi = regionDepUdi;
+                        }
+
+                        servicesPrices.Add(spArtifact);
                     }
 
-                    // Region
-                    if (price.RegionId.HasValue)
+                    artifact.CalculationConfig = JObject.FromObject(new FixedRateShippingCalculationConfigArtifact
                     {
-                        var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Region, price.RegionId.Value);
-                        var regionDep = new UmbracoCommerceArtifactDependency(regionDepUdi);
-
-                        dependencies.Add(regionDep);
-
-                        spArtifact.RegionUdi = regionDepUdi;
-                    }
-
-                    servicesPrices.Add(spArtifact);
+                        Prices = servicesPrices
+                    });
                 }
-
-                artifact.CalculationConfig = JObject.FromObject(new FixedRateShippingCalculationConfigArtifact
+                else
                 {
-                    Prices = servicesPrices
-                });
-            }
-            else
-            {
-                // No additional processing required
-                artifact.CalculationConfig = JObject.FromObject(entity.CalculationConfig);
+                    // No additional processing required
+                    artifact.CalculationConfig = JObject.FromObject(entity.CalculationConfig);
+                }
             }
 
             // Allowed country regions
