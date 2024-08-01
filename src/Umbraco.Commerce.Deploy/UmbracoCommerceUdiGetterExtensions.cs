@@ -5,58 +5,27 @@ namespace Umbraco.Commerce.Deploy
 {
     internal static class UmbracoCommerceUdiGetterExtensions
     {
-        public static GuidUdi GetUdi(this EntityBase entity)
-        {
-            if (entity is StoreReadOnly store)
-                return store.GetUdi();
-
-            if (entity is CountryReadOnly country)
-                return country.GetUdi();
-
-            if (entity is RegionReadOnly region)
-                return region.GetUdi();
-
-            if (entity is LocationReadOnly location)
-                return location.GetUdi();
-
-            if (entity is OrderStatusReadOnly orderStatus)
-                return orderStatus.GetUdi();
-
-            if (entity is CurrencyReadOnly currency)
-                return currency.GetUdi();
-
-            if (entity is ShippingMethodReadOnly shippingMethod)
-                return shippingMethod.GetUdi();
-
-            if (entity is PaymentMethodReadOnly paymentMethod)
-                return paymentMethod.GetUdi();
-
-            if (entity is TaxClassReadOnly taxClass)
-                return taxClass.GetUdi();
-
-            if (entity is EmailTemplateReadOnly emailTemplate)
-                return emailTemplate.GetUdi();
-
-            if (entity is PrintTemplateReadOnly printTemplate)
-                return printTemplate.GetUdi();
-
-            if (entity is ExportTemplateReadOnly exportTemplate)
-                return exportTemplate.GetUdi();
-
-            if (entity is DiscountReadOnly discount)
-                return discount.GetUdi();
-
-            if (entity is GiftCardReadOnly giftCard)
-                return giftCard.GetUdi();
-
-            if (entity is ProductAttributeReadOnly productAtrtibtue)
-                return productAtrtibtue.GetUdi();
-
-            if (entity is ProductAttributePresetReadOnly productAtrtibtuePreset)
-                return productAtrtibtuePreset.GetUdi();
-
-            return null;
-        }
+        public static GuidUdi? GetUdi(this EntityBase entity) =>
+            entity switch
+            {
+                StoreReadOnly store => store.GetUdi(),
+                CountryReadOnly country => country.GetUdi(),
+                RegionReadOnly region => region.GetUdi(),
+                LocationReadOnly location => location.GetUdi(),
+                OrderStatusReadOnly orderStatus => orderStatus.GetUdi(),
+                CurrencyReadOnly currency => currency.GetUdi(),
+                ShippingMethodReadOnly shippingMethod => shippingMethod.GetUdi(),
+                PaymentMethodReadOnly paymentMethod => paymentMethod.GetUdi(),
+                TaxClassReadOnly taxClass => taxClass.GetUdi(),
+                EmailTemplateReadOnly emailTemplate => emailTemplate.GetUdi(),
+                PrintTemplateReadOnly printTemplate => printTemplate.GetUdi(),
+                ExportTemplateReadOnly exportTemplate => exportTemplate.GetUdi(),
+                DiscountReadOnly discount => discount.GetUdi(),
+                GiftCardReadOnly giftCard => giftCard.GetUdi(),
+                ProductAttributeReadOnly productAtrtibtue => productAtrtibtue.GetUdi(),
+                ProductAttributePresetReadOnly productAtrtibtuePreset => productAtrtibtuePreset.GetUdi(),
+                _ => null
+            };
 
         public static GuidUdi GetUdi(this StoreReadOnly entity)
             => new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.Id);

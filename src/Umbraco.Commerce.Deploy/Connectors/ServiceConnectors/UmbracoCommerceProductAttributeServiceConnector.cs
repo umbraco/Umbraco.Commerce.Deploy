@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
@@ -14,19 +16,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.ProductAttribute, UdiType.GuidUdi)]
     public class UmbracoCommerceProductAttributeServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ProductAttributeArtifact, ProductAttributeReadOnly, ProductAttribute, ProductAttributeState>
     {
-        public override int[] ProcessPasses => new[]
+        protected override int[] ProcessPasses => new[]
         {
             3
         };
 
-        public override string[] ValidOpenSelectors => new[]
-        { 
+        protected override string[] ValidOpenSelectors => new[]
+        {
             "this",
             "this-and-descendants",
             "descendants"
         };
 
-        public override string AllEntitiesRangeName => "All Umbraco Commerce Product Attributes";
+        protected override string OpenUdiName => "All Umbraco Commerce Product Attributes";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.ProductAttribute;
 
@@ -39,16 +41,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override string GetEntityName(ProductAttributeReadOnly entity)
             => entity.Name;
 
-        public override ProductAttributeReadOnly GetEntity(Guid id)
-            => _umbracoCommerceApi.GetProductAttribute(id);
+        public override Task<ProductAttributeReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult((ProductAttributeReadOnly?)_umbracoCommerceApi.GetProductAttribute(id));
 
-        public override IEnumerable<ProductAttributeReadOnly> GetEntities(Guid storeId)
-            => _umbracoCommerceApi.GetProductAttributes(storeId);
+        public override IAsyncEnumerable<ProductAttributeReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetProductAttributes(storeId).ToAsyncEnumerable();
 
-        public override ProductAttributeArtifact GetArtifact(GuidUdi udi, ProductAttributeReadOnly entity)
+        public override Task<ProductAttributeArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributeReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
-                return null;
+            {
+                return Task.FromResult<ProductAttributeArtifact?>(null);
+            }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
 
@@ -77,45 +81,52 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 SortOrder = entity.SortOrder
             };
 
-            return artifact;
+            return Task.FromResult<ProductAttributeArtifact?>(artifact);
         }
 
-        public override void Process(ArtifactDeployState<ProductAttributeArtifact, ProductAttributeReadOnly> state, IDeployContext context, int pass)
+        public override async Task ProcessAsync(ArtifactDeployState<ProductAttributeArtifact, ProductAttributeReadOnly> state, IDeployContext context, int pass, CancellationToken cancellationToken = default)
         {
-            state.NextPass = GetNextPass(ProcessPasses, pass);
+            state.NextPass = GetNextPass(pass);
 
             switch (pass)
             {
                 case 3:
-                    Pass3(state, context);
+                    await Pass3Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(pass));
             }
         }
 
-        private void Pass3(ArtifactDeployState<ProductAttributeArtifact, ProductAttributeReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
+        private Task Pass3Async(ArtifactDeployState<ProductAttributeArtifact, ProductAttributeReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
+                {
+                    ProductAttributeArtifact artifact = state.Artifact;
 
-                artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ProductAttribute);
-                artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
+                    artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ProductAttribute);
+                    artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                var entity = state.Entity?.AsWritable(uow) ?? ProductAttribute.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name.DefaultValue);
+                    ProductAttribute? entity = state.Entity?.AsWritable(uow) ?? ProductAttribute.Create(
+                        uow,
+                        artifact.Udi.Guid,
+                        artifact.StoreUdi.Guid,
+                        artifact.Alias,
+                        artifact.Name.DefaultValue);
 
-                entity.SetAlias(artifact.Alias)
-                    .SetName(new TranslatedValue<string>(artifact.Name.DefaultValue, artifact.Name.Translations))
-                    .SetValues(artifact.Values.Select(x => new KeyValuePair<string, TranslatedValue<string>>(x.Alias, new TranslatedValue<string>(x.Name.DefaultValue, x.Name.Translations))))
-                    .SetSortOrder(artifact.SortOrder);
+                    entity.SetAlias(artifact.Alias)
+                        .SetName(new TranslatedValue<string>(artifact.Name.DefaultValue, artifact.Name.Translations))
+                        .SetValues(artifact.Values.Select(x => new KeyValuePair<string, TranslatedValue<string>>(x.Alias, new TranslatedValue<string>(x.Name.DefaultValue, x.Name.Translations))))
+                        .SetSortOrder(artifact.SortOrder);
 
-                _umbracoCommerceApi.SaveProductAttribute(entity);
+                    _umbracoCommerceApi.SaveProductAttribute(entity);
 
-                state.Entity = entity;
+                    state.Entity = entity;
 
-                uow.Complete();
-            });
-        }
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
     }
 }

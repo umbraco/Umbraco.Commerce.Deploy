@@ -1,135 +1,152 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
-using Umbraco.Deploy.Core.Exceptions;
 using Umbraco.Deploy.Infrastructure.Artifacts;
 using Umbraco.Deploy.Infrastructure.Connectors.ServiceConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
-    public abstract class UmbracoCommerceEntityServiceConnectorBase<TArtifact, TEntity> : ServiceConnectorBase<TArtifact, GuidUdi, ArtifactDeployState<TArtifact, TEntity>>
+    public abstract class UmbracoCommerceEntityServiceConnectorBase<TArtifact, TEntity>(
+        IUmbracoCommerceApi umbracoCommerceApi,
+        UmbracoCommerceDeploySettingsAccessor settingsAccessor)
+        : ServiceConnectorBase<TArtifact, GuidUdi, TEntity>
         where TArtifact : DeployArtifactBase<GuidUdi>
         where TEntity : EntityBase
     {
-        protected readonly IUmbracoCommerceApi _umbracoCommerceApi;
-        protected readonly UmbracoCommerceDeploySettingsAccessor _settingsAccessor;
-
-        public abstract int[] ProcessPasses { get; }
-
-        public abstract string[] ValidOpenSelectors { get; }
-
-        public abstract string AllEntitiesRangeName { get; }
+        protected readonly IUmbracoCommerceApi _umbracoCommerceApi = umbracoCommerceApi;
+        protected readonly UmbracoCommerceDeploySettingsAccessor _settingsAccessor = settingsAccessor;
 
         public abstract string UdiEntityType { get; }
 
         public virtual string ContainerId => "-1";
 
-        public UmbracoCommerceEntityServiceConnectorBase(IUmbracoCommerceApi umbracoCommerceApi, UmbracoCommerceDeploySettingsAccessor settingsAccessor)
-        {
-            _umbracoCommerceApi = umbracoCommerceApi;
-            _settingsAccessor = settingsAccessor;
-        }
-
         public abstract string GetEntityName(TEntity entity);
 
-        public abstract TEntity GetEntity(Guid id);
+        public abstract Task<TEntity?> GetEntityAsync(Guid id,  CancellationToken cancellationToken = default);
 
-        public abstract IEnumerable<TEntity> GetEntities();
+        public abstract IAsyncEnumerable<TEntity> GetEntitiesAsync(CancellationToken cancellationToken = default);
 
-        public abstract TArtifact GetArtifact(GuidUdi udi, TEntity entity);
+        public abstract Task<TArtifact?> GetArtifactAsync(GuidUdi? udi, TEntity? entity, CancellationToken cancellationToken = default);
 
-        public override TArtifact GetArtifact(object o, IContextCache contextCache)
-        {
-            var entity = o as TEntity;
-            if (entity == null)
-                throw new InvalidEntityTypeException(string.Format("Unexpected entity type \"{0}\".", o.GetType().FullName));
+        public override Task<TArtifact> GetArtifactAsync(
+            TEntity entity,
+            IContextCache contextCache,
+            CancellationToken cancellationToken = default)
+            => GetArtifactAsync(entity.GetUdi(), entity, cancellationToken)!;
 
-            return GetArtifact(entity.GetUdi(), entity);
-        }
-
-        public override TArtifact GetArtifact(GuidUdi udi, IContextCache contextCache)
+        public override async Task<TArtifact?> GetArtifactAsync(
+            GuidUdi? udi,
+            IContextCache contextCache,
+            CancellationToken cancellationToken = default)
         {
             EnsureType(udi);
-
-            return GetArtifact(udi, GetEntity(udi.Guid));
+            TEntity? entity = await GetEntityAsync(udi.Guid, cancellationToken).ConfigureAwait(false);
+            return entity == null ? null : await GetArtifactAsync(udi, entity, cancellationToken).ConfigureAwait(false);
         }
 
-        public override NamedUdiRange GetRange(GuidUdi udi, string selector)
+        public override async Task<NamedUdiRange> GetRangeAsync(
+            GuidUdi udi,
+            string selector,
+            CancellationToken cancellationToken = default)
         {
             EnsureType(udi);
 
             if (udi.IsRoot)
             {
-                EnsureSelector(selector, ValidOpenSelectors);
-
-                return new NamedUdiRange(udi, AllEntitiesRangeName, selector);
+                EnsureSelector(udi, selector);
+                return new NamedUdiRange(udi, OpenUdiName, selector);
             }
 
-            var entity = GetEntity(udi.Guid);
+            TEntity? entity = await GetEntityAsync(udi.Guid, cancellationToken).ConfigureAwait(false);
+
             if (entity == null)
+            {
                 throw new ArgumentException("Could not find an entity with the specified identifier.", nameof(udi));
+            }
 
             return GetRange(entity, selector);
         }
 
-        public override NamedUdiRange GetRange(string entityType, string sid, string selector)
+        public override async Task<NamedUdiRange> GetRangeAsync(
+            string entityType,
+            string sid,
+            string selector,
+            CancellationToken cancellationToken = default)
         {
             if (sid == "-1" || sid == ContainerId)
             {
-                EnsureSelector(selector, ValidOpenSelectors);
-
-                return new NamedUdiRange(Udi.Create(UdiEntityType), AllEntitiesRangeName, selector);
+                EnsureOpenSelector(selector);
+                return new NamedUdiRange(Udi.Create(UdiEntityType), OpenUdiName, selector);
             }
 
             if (!Guid.TryParse(sid, out Guid result))
+            {
                 throw new ArgumentException("Invalid identifier.", nameof(sid));
+            }
 
-            var entity = GetEntity(result);
+            TEntity? entity = await GetEntityAsync(result, cancellationToken).ConfigureAwait(false);
+
             if (entity == null)
+            {
                 throw new ArgumentException("Could not find an entity with the specified identifier.", nameof(sid));
+            }
 
             return GetRange(entity, selector);
         }
 
         private NamedUdiRange GetRange(TEntity e, string selector)
-        {
-            return new NamedUdiRange(e.GetUdi(), GetEntityName(e), selector);
-        }
+            => new(e.GetUdi(), GetEntityName(e), selector);
 
-        public override void Explode(UdiRange range, List<Udi> udis)
+        public override async IAsyncEnumerable<GuidUdi?> ExpandRangeAsync(
+            UdiRange range,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             EnsureType(range.Udi);
 
             if (range.Udi.IsRoot)
             {
-                EnsureSelector(range, ValidOpenSelectors);
+                EnsureSelector(range.Udi, range.Selector);
 
-                udis.AddRange(GetEntities().Select(e => e.GetUdi()));
+                await foreach (TEntity entity in GetEntitiesAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    yield return entity.GetUdi();
+                }
             }
             else
             {
-                var entity = GetEntity(((GuidUdi)range.Udi).Guid);
+                TEntity? entity = await GetEntityAsync(((GuidUdi)range.Udi).Guid, cancellationToken).ConfigureAwait(false);
+
                 if (entity == null)
-                    return;
+                {
+                    yield break;
+                }
 
-                EnsureSelector(range.Selector, new[] { "this" });
+                if (range.Selector != "this")
+                {
+                    throw new NotSupportedException("Unexpected selector \"" + range.Selector + "\".");
+                }
 
-                udis.Add(entity.GetUdi());
+                yield return entity.GetUdi();
             }
         }
 
-        public override ArtifactDeployState<TArtifact, TEntity> ProcessInit(TArtifact art, IDeployContext context)
+        public override async Task<ArtifactDeployState<TArtifact, TEntity>> ProcessInitAsync(
+            TArtifact artifact,
+            IDeployContext context,
+            CancellationToken cancellationToken = default)
         {
-            EnsureType(art.Udi);
+            EnsureType(artifact.Udi);
 
-            var entity = GetEntity(art.Udi.Guid);
+            TEntity? entity = await GetEntityAsync(artifact.Udi.Guid, cancellationToken).ConfigureAwait(false);
 
-            return ArtifactDeployState.Create(art, entity, this, ProcessPasses[0]);
+            return ArtifactDeployState.Create(artifact, entity, this, ProcessPasses[0]);
         }
     }
 }

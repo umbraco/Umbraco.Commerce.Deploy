@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
@@ -10,50 +13,54 @@ using Umbraco.Cms.Core.Deploy;
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.Country, UdiType.GuidUdi)]
-    public class UmbracoCommerceCountryServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<CountryArtifact, CountryReadOnly, Country, CountryState>
+    public class UmbracoCommerceCountryServiceConnector(
+        IUmbracoCommerceApi umbracoCommerceApi,
+        UmbracoCommerceDeploySettingsAccessor settingsAccessor)
+        : UmbracoCommerceStoreEntityServiceConnectorBase<CountryArtifact, CountryReadOnly, Country, CountryState>(
+            umbracoCommerceApi, settingsAccessor)
     {
-        public override int[] ProcessPasses => new[]
+        protected override int[] ProcessPasses => new[]
         {
             2,4
         };
 
-        public override string[] ValidOpenSelectors => new[]
+        protected override string[] ValidOpenSelectors => new[]
         {
             "this",
             "this-and-descendants",
             "descendants"
         };
 
-        public override string AllEntitiesRangeName => "All Umbraco Commerce Countries";
+        protected override string OpenUdiName => "All Umbraco Commerce Countries";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.Country;
-
-        public UmbracoCommerceCountryServiceConnector(IUmbracoCommerceApi umbracoCommerceApi, UmbracoCommerceDeploySettingsAccessor settingsAccessor)
-            : base(umbracoCommerceApi, settingsAccessor)
-        { }
 
         public override string GetEntityName(CountryReadOnly entity)
             => entity.Name;
 
-        public override CountryReadOnly GetEntity(Guid id)
-            => _umbracoCommerceApi.GetCountry(id);
+        public override Task<CountryReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult((CountryReadOnly?)_umbracoCommerceApi.GetCountry(id));
 
-        public override IEnumerable<CountryReadOnly> GetEntities(Guid storeId)
-            => _umbracoCommerceApi.GetCountries(storeId);
+        public override IAsyncEnumerable<CountryReadOnly> GetEntitiesAsync(
+            Guid storeId,
+            CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetCountries(storeId).ToAsyncEnumerable();
 
-        public override CountryArtifact GetArtifact(GuidUdi udi, CountryReadOnly entity)
+        public override Task<CountryArtifact?> GetArtifactAsync(GuidUdi? udi, CountryReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
-                return null;
+            {
+                return Task.FromResult<CountryArtifact?>(null);
+            }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
 
             var dependencies = new ArtifactDependencyCollection
             {
-                new UmbracoCommerceArtifactDependency(storeUdi)
+                new UmbracoCommerceArtifactDependency(storeUdi),
             };
 
-            var artifcat = new CountryArtifact(udi, storeUdi, dependencies)
+            var artifact = new CountryArtifact(udi, storeUdi, dependencies)
             {
                 Name = entity.Name,
                 Code = entity.Code,
@@ -68,7 +75,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                 dependencies.Add(currencyDep);
 
-                artifcat.DefaultCurrencyUdi = currencyDepUdi;
+                artifact.DefaultCurrencyUdi = currencyDepUdi;
             }
 
             // Default payment method
@@ -79,7 +86,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                 dependencies.Add(pmDep);
 
-                artifcat.DefaultPaymentMethodUdi = pmDepUdi;
+                artifact.DefaultPaymentMethodUdi = pmDepUdi;
             }
 
             // Default shipping method
@@ -90,88 +97,104 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                 dependencies.Add(smDep);
 
-                artifcat.DefaultShippingMethodUdi = smDepUdi;
+                artifact.DefaultShippingMethodUdi = smDepUdi;
             }
 
-            return artifcat;
+            return Task.FromResult<CountryArtifact?>(artifact);
         }
 
-        public override void Process(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context, int pass)
+        public override async Task ProcessAsync(
+            ArtifactDeployState<CountryArtifact, CountryReadOnly> state,
+            IDeployContext context,
+            int pass,
+            CancellationToken cancellationToken = default)
         {
-            state.NextPass = GetNextPass(ProcessPasses, pass);
+            state.NextPass = GetNextPass(pass);
 
             switch (pass)
             {
                 case 2:
-                    Pass2(state, context);
+                    await Pass2Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 case 4:
-                    Pass4(state, context);
+                    await Pass4Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(pass));
             }
         }
 
-        private void Pass2(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-
-                artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
-                artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
-
-                var entity = state.Entity?.AsWritable(uow) ?? Country.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Code, artifact.Name);
-
-                entity.SetName(artifact.Name)
-                    .SetCode(artifact.Code)
-                    .SetSortOrder(artifact.SortOrder);
-
-                _umbracoCommerceApi.SaveCountry(entity);
-
-                state.Entity = entity;
-
-                uow.Complete();
-            });
-        }
-
-        private void Pass4(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-                var entity = _umbracoCommerceApi.GetCountry(state.Entity.Id).AsWritable(uow);
-
-                if (artifact.DefaultCurrencyUdi != null)
+        private Task Pass2Async(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
                 {
-                    artifact.DefaultCurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
-                    // TODO: Check the currency exists?
-                }
+                    CountryArtifact artifact = state.Artifact;
 
-                entity.SetDefaultCurrency(artifact.DefaultCurrencyUdi?.Guid);
+                    artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
+                    artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                if (artifact.DefaultPaymentMethodUdi != null)
+                    Country? entity = state.Entity?.AsWritable(uow) ?? Country.Create(
+                        uow,
+                        artifact.Udi.Guid,
+                        artifact.StoreUdi.Guid,
+                        artifact.Code,
+                        artifact.Name);
+
+                    entity.SetName(artifact.Name)
+                        .SetCode(artifact.Code)
+                        .SetSortOrder(artifact.SortOrder);
+
+                    _umbracoCommerceApi.SaveCountry(entity);
+
+                    state.Entity = entity;
+
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
+
+        private Task Pass4Async(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
                 {
-                    artifact.DefaultPaymentMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
-                    // TODO: Check the payment method exists?
-                }
+                    CountryArtifact artifact = state.Artifact;
 
-                entity.SetDefaultPaymentMethod(artifact.DefaultPaymentMethodUdi?.Guid);
+                    if (state.Entity != null)
+                    {
+                        Country? entity = _umbracoCommerceApi.GetCountry(state.Entity.Id).AsWritable(uow);
 
-                if (artifact.DefaultShippingMethodUdi != null)
-                {
-                    artifact.DefaultShippingMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
-                    // TODO: Check the payment method exists?
-                }
+                        if (artifact.DefaultCurrencyUdi != null)
+                        {
+                            artifact.DefaultCurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
+                            // TODO: Check the currency exists?
+                        }
 
-                entity.SetDefaultShippingMethod(artifact.DefaultShippingMethodUdi?.Guid);
+                        entity.SetDefaultCurrency(artifact.DefaultCurrencyUdi?.Guid);
 
-                _umbracoCommerceApi.SaveCountry(entity);
+                        if (artifact.DefaultPaymentMethodUdi != null)
+                        {
+                            artifact.DefaultPaymentMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
+                            // TODO: Check the payment method exists?
+                        }
 
-                uow.Complete();
+                        entity.SetDefaultPaymentMethod(artifact.DefaultPaymentMethodUdi?.Guid);
 
-            });
-        }
+                        if (artifact.DefaultShippingMethodUdi != null)
+                        {
+                            artifact.DefaultShippingMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
+                            // TODO: Check the payment method exists?
+                        }
+
+                        entity.SetDefaultShippingMethod(artifact.DefaultShippingMethodUdi?.Guid);
+
+                        _umbracoCommerceApi.SaveCountry(entity);
+                    }
+
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
     }
 }
