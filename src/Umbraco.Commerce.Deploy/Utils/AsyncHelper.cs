@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Umbraco.Commerce.Deploy.Utils;
+namespace Umbraco.Commerce.Deploy;
 
 internal static class AsyncHelper
 {

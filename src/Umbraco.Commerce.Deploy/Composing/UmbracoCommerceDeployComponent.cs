@@ -11,7 +11,6 @@ using Umbraco.Extensions;
 using Umbraco.Cms.Core;
 using System.Linq;
 using System.Threading.Tasks;
-using Umbraco.Commerce.Deploy.Utils;
 using Umbraco.Deploy.Core;
 
 namespace Umbraco.Commerce.Deploy.Composing
