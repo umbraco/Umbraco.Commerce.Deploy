@@ -76,7 +76,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 GiftCardDaysValid = entity.GiftCardDaysValid,
                 GiftCardCodeTemplate = entity.GiftCardCodeTemplate,
                 GiftCardPropertyAliases = entity.GiftCardPropertyAliases,
-                GiftCardActivationMethod = (int)entity.GiftCardActivationMethod
+                GiftCardActivationMethod = (int)entity.GiftCardActivationMethod,
+                AllowedUsers = entity.AllowedUsers.Select(x => x.UserId).ToList(),
+                AllowedUserRoles = entity.AllowedUserRoles.Select(x => x.Role).ToList(),
             };
 
             // Base currency
@@ -169,52 +171,6 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 artifact.ErrorEmailTemplateUdi = depUdi;
             }
 
-            // Allowed users
-            // NB: Users can't be deployed so don't add to dependencies collection
-            // instead we'll just have to hope that they exist on all environments
-            // and if not, when it comes to restore, we'll just not set anything
-            if (entity.AllowedUsers.Count > 0)
-            {
-                var users = new List<string>();
-
-                foreach (var id in entity.AllowedUsers)
-                {
-                    var user = _userService.GetByProviderKey(id.UserId);
-                    if (user != null)
-                    {
-                        users.Add(user.Username);
-                    }
-                }
-
-                if (users.Count > 0)
-                {
-                    artifact.AllowedUsers = users;
-                }
-            }
-
-            // Allowed user roles
-            // NB: Users roles can't be deployed so don't add to dependencies collection
-            // instead we'll just have to hope that they exist on all environments
-            // and if not, when it comes to restore, we'll just not set anything
-            if (entity.AllowedUserRoles.Count > 0)
-            {
-                var userRoles = new List<string>();
-
-                foreach (var role in entity.AllowedUserRoles)
-                {
-                    var userGroup = _userService.GetUserGroupByAlias(role.Role);
-                    if (userGroup != null)
-                    {
-                        userRoles.Add(userGroup.Alias);
-                    }
-                }
-
-                if (userRoles.Count > 0)
-                {
-                    artifact.AllowedUserRoles = userRoles;
-                }
-            }
-
             // Stock sharing store
             if (entity.ShareStockFromStoreId.HasValue)
             {
@@ -244,9 +200,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass1Async(ArtifactDeployState<StoreArtifact, StoreReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass1Async(ArtifactDeployState<StoreArtifact, StoreReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default)
+            => await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     StoreArtifact artifact = state.Artifact;
 
@@ -272,7 +228,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         .SetGiftCardValidityTimeframe(artifact.GiftCardDaysValid)
                         .SetGiftCardPropertyAliases(artifact.GiftCardPropertyAliases, SetBehavior.Replace)
                         .SetGiftCardActivationMethod((GiftCardActivationMethod)artifact.GiftCardActivationMethod)
-                        .SetSortOrder(artifact.SortOrder);
+                        .SetSortOrder(artifact.SortOrder)
+                        .SetAllowedUsers(artifact.AllowedUsers)
+                        .SetAllowedUserRoles(artifact.AllowedUserRoles);
 
                     if (artifact.CookieTimeout.HasValue)
                     {
@@ -283,35 +241,14 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         entity.DisableCookies();
                     }
 
-                    if (artifact.AllowedUsers != null && artifact.AllowedUsers.Any())
-                    {
-                        var userIds = artifact.AllowedUsers.Select(x => _userService.GetByUsername(x))
-                            .Where(x => x != null)
-                            .Select(x => x.Id.ToString(CultureInfo.InvariantCulture))
-                            .ToList();
-
-                        entity.SetAllowedUsers(userIds, SetBehavior.Replace);
-                    }
-
-                    if (artifact.AllowedUserRoles != null && artifact.AllowedUserRoles.Any())
-                    {
-                        var userRoles = artifact.AllowedUserRoles.Select(x => _userService.GetUserGroupByAlias(x))
-                            .Where(x => x != null)
-                            .Select(x => x.Alias)
-                            .ToList();
-
-                        entity.SetAllowedUserRoles(userRoles, SetBehavior.Replace);
-                    }
-
                     _umbracoCommerceApi.SaveStore(entity);
 
                     state.Entity = entity;
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
-                cancellationToken);
+                cancellationToken)
+                .ConfigureAwait(false);
 
         private Task Pass4Async(ArtifactDeployState<StoreArtifact, StoreReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
             _umbracoCommerceApi.Uow.ExecuteAsync(
