@@ -18,15 +18,6 @@
         "resolved": "3.5.119",
         "contentHash": "x8k4zV6YKZA5Rr810439lG9NngdbyPtFv0QpIYz32m1Im59kvSbEHO8gKGZoNvsfZSquayjEDUCa8acbut372g=="
       },
-      "StyleCop.Analyzers": {
-        "type": "Direct",
-        "requested": "[1.2.0-beta.435, )",
-        "resolved": "1.2.0-beta.435",
-        "contentHash": "TADk7vdGXtfTnYCV7GyleaaRTQjfoSfZXprQrVMm7cSJtJbFc1QIbWPyLvrgrfGdfHbGmUPvaN4ODKNxg2jgPQ==",
-        "dependencies": {
-          "StyleCop.Analyzers.Unstable": "1.2.0.435"
-        }
-      },
       "Umbraco.Code": {
         "type": "Direct",
         "requested": "[2.2.0, )",
@@ -73,6 +64,12 @@
         "requested": "[0.2.0, )",
         "resolved": "0.2.0",
         "contentHash": "m85a1RWGllvZxhw4SfnNyHszN9WDqQk6WGpR0Fzu2ZwEHCPesQPc+7NDl/PgUrVLyLDA9HqAasb2NEHqPffaCQ=="
+      },
+      "Umbraco.JsonSchema.Extensions": {
+        "type": "Direct",
+        "requested": "[0.3.0, )",
+        "resolved": "0.3.0",
+        "contentHash": "pvgnrC9vQ/3GvYvAwhLHvqwMgyvndHtKi+io77cMNuY+e/eR0eBV5SyzXmW5q3MFnbV4AizdjZIsuoMszY7mxA=="
       },
       "Asp.Versioning.Abstractions": {
         "type": "Transitive",
@@ -1973,11 +1970,6 @@
         "dependencies": {
           "System.Collections.Concurrent": "4.3.0"
         }
-      },
-      "StyleCop.Analyzers.Unstable": {
-        "type": "Transitive",
-        "resolved": "1.2.0.435",
-        "contentHash": "ouwPWZxbOV3SmCZxIRqHvljkSzkCyi1tDoMzQtDb/bRP8ctASV/iRJr+A2Gdj0QLaLmWnqTWDrH82/iP+X80Lg=="
       },
       "Swashbuckle.AspNetCore": {
         "type": "Transitive",
