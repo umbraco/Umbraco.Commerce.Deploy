@@ -34,7 +34,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            Dictionary<Guid, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue);
+            Dictionary<Guid, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue, Constants.DefaultJsonSerializerOptions);
 
             var dstDict = new Dictionary<GuidUdi, decimal?>();
 
@@ -54,7 +54,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 dstDict.Add(udi, kvp.Value);
             }
 
-            return JsonSerializer.Serialize(dstDict);
+            return JsonSerializer.Serialize(dstDict, Constants.DefaultJsonSerializerOptions);
         }
 
 
@@ -73,7 +73,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            Dictionary<string, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue);
+            Dictionary<string, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue, Constants.DefaultJsonSerializerOptions);
 
             var dstDict = new Dictionary<Guid, decimal?>();
 
@@ -89,7 +89,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 }
             }
 
-            return JsonSerializer.Serialize(dstDict);
+            return JsonSerializer.Serialize(dstDict, Constants.DefaultJsonSerializerOptions);
         }
     }
 }

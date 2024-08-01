@@ -137,12 +137,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.CalculationConfig = JsonSerializer.SerializeToElement(new FixedRateShippingCalculationConfigArtifact
                     {
                         Prices = servicesPrices
-                    });
+                    }, Constants.DefaultJsonSerializerOptions);
                 }
                 else
                 {
                     // No additional processing required
-                    artifact.CalculationConfig = JsonSerializer.SerializeToElement(entity.CalculationConfig);
+                    artifact.CalculationConfig = JsonSerializer.SerializeToElement(entity.CalculationConfig, Constants.DefaultJsonSerializerOptions);
                 }
             }
 
@@ -265,7 +265,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             if (artifact.CalculationMode == (int)ShippingCalculationMode.Fixed)
                             {
-                                FixedRateShippingCalculationConfigArtifact? cfgArtifact = artifact.CalculationConfig?.Deserialize<FixedRateShippingCalculationConfigArtifact>();
+                                FixedRateShippingCalculationConfigArtifact? cfgArtifact = artifact.CalculationConfig?.Deserialize<FixedRateShippingCalculationConfigArtifact>(Constants.DefaultJsonSerializerOptions);
 
                                 var prices = new List<ServicePrice>();
 
@@ -290,11 +290,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             }
                             else if (artifact.CalculationMode == (int)ShippingCalculationMode.Dynamic)
                             {
-                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<DynamicRateShippingCalculationConfig>());
+                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<DynamicRateShippingCalculationConfig>(Constants.DefaultJsonSerializerOptions));
                             }
                             else if (artifact.CalculationMode == (int)ShippingCalculationMode.Realtime)
                             {
-                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<RealtimeRateShippingCalculationConfig>());
+                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<RealtimeRateShippingCalculationConfig>(Constants.DefaultJsonSerializerOptions));
                             }
                             else
                             {
