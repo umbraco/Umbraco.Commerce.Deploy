@@ -3,21 +3,26 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Options;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Commerce.Core.Models;
+using Umbraco.Deploy.Core;
 using Umbraco.Deploy.Core.Connectors.ValueConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
     public class UmbracoCommercePriceValueConnector(
         IUmbracoCommerceApi umbracoCommerceApi,
-        UmbracoCommerceDeploySettingsAccessor settingsAccessor)
+        IOptionsMonitor<JsonOptions> jsonOptions)
         : ValueConnectorBase
     {
+        private readonly JsonSerializerOptions _jsonSerializerOptions = jsonOptions.Get(DeployConstants.JsonOptionsNames.Deploy).SerializerOptions;
+
         public override IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.Price" };
 
         public override async Task<string?> ToArtifactAsync(
@@ -34,7 +39,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            Dictionary<Guid, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue, Constants.DefaultJsonSerializerOptions);
+            Dictionary<Guid, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue, _jsonSerializerOptions);
 
             var dstDict = new Dictionary<GuidUdi, decimal?>();
 
@@ -54,7 +59,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 dstDict.Add(udi, kvp.Value);
             }
 
-            return JsonSerializer.Serialize(dstDict, Constants.DefaultJsonSerializerOptions);
+            return JsonSerializer.Serialize(dstDict, _jsonSerializerOptions);
         }
 
 
@@ -73,7 +78,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            Dictionary<string, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue, Constants.DefaultJsonSerializerOptions);
+            Dictionary<string, decimal?>? srcDict = JsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue, _jsonSerializerOptions);
 
             var dstDict = new Dictionary<Guid, decimal?>();
 
@@ -89,7 +94,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 }
             }
 
-            return JsonSerializer.Serialize(dstDict, Constants.DefaultJsonSerializerOptions);
+            return JsonSerializer.Serialize(dstDict, _jsonSerializerOptions);
         }
     }
 }

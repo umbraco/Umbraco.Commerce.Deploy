@@ -4,20 +4,29 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Options;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
-
+using Umbraco.Deploy.Core;
 using StringExtensions = Umbraco.Commerce.Extensions.StringExtensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.ShippingMethod, UdiType.GuidUdi)]
-    public class UmbracoCommerceShippingMethodServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ShippingMethodArtifact, ShippingMethodReadOnly, ShippingMethod, ShippingMethodState>
+    public class UmbracoCommerceShippingMethodServiceConnector(
+        IUmbracoCommerceApi umbracoCommerceApi,
+        UmbracoCommerceDeploySettingsAccessor settingsAccessor,
+        IOptionsMonitor<JsonOptions> jsonOptions)
+        : UmbracoCommerceStoreEntityServiceConnectorBase<ShippingMethodArtifact, ShippingMethodReadOnly, ShippingMethod,
+            ShippingMethodState>(umbracoCommerceApi, settingsAccessor)
     {
+        private readonly JsonSerializerOptions _jsonSerializerOptions = jsonOptions.Get(DeployConstants.JsonOptionsNames.Deploy).SerializerOptions;
+
         protected override int[] ProcessPasses => new[]
         {
             2,4
@@ -33,10 +42,6 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         protected override string OpenUdiName => "All Umbraco Commerce Shipping Methods";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.ShippingMethod;
-
-        public UmbracoCommerceShippingMethodServiceConnector(IUmbracoCommerceApi umbracoCommerceApi, UmbracoCommerceDeploySettingsAccessor settingsAccessor)
-            : base(umbracoCommerceApi, settingsAccessor)
-        { }
 
         public override string GetEntityName(ShippingMethodReadOnly entity)
             => entity.Name;
@@ -137,12 +142,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.CalculationConfig = JsonSerializer.SerializeToElement(new FixedRateShippingCalculationConfigArtifact
                     {
                         Prices = servicesPrices
-                    }, Constants.DefaultJsonSerializerOptions);
+                    }, _jsonSerializerOptions);
                 }
                 else
                 {
                     // No additional processing required
-                    artifact.CalculationConfig = JsonSerializer.SerializeToElement(entity.CalculationConfig, Constants.DefaultJsonSerializerOptions);
+                    artifact.CalculationConfig = JsonSerializer.SerializeToElement(entity.CalculationConfig, _jsonSerializerOptions);
                 }
             }
 
@@ -265,7 +270,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             if (artifact.CalculationMode == (int)ShippingCalculationMode.Fixed)
                             {
-                                FixedRateShippingCalculationConfigArtifact? cfgArtifact = artifact.CalculationConfig?.Deserialize<FixedRateShippingCalculationConfigArtifact>(Constants.DefaultJsonSerializerOptions);
+                                FixedRateShippingCalculationConfigArtifact? cfgArtifact = artifact.CalculationConfig?.Deserialize<FixedRateShippingCalculationConfigArtifact>(_jsonSerializerOptions);
 
                                 var prices = new List<ServicePrice>();
 
@@ -290,11 +295,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             }
                             else if (artifact.CalculationMode == (int)ShippingCalculationMode.Dynamic)
                             {
-                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<DynamicRateShippingCalculationConfig>(Constants.DefaultJsonSerializerOptions));
+                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<DynamicRateShippingCalculationConfig>(_jsonSerializerOptions));
                             }
                             else if (artifact.CalculationMode == (int)ShippingCalculationMode.Realtime)
                             {
-                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<RealtimeRateShippingCalculationConfig>(Constants.DefaultJsonSerializerOptions));
+                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<RealtimeRateShippingCalculationConfig>(_jsonSerializerOptions));
                             }
                             else
                             {
