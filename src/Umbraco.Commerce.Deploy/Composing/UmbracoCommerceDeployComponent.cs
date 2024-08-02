@@ -25,7 +25,9 @@ namespace Umbraco.Commerce.Deploy.Composing
         {
             RegisterUdiTypes();
             InitializeDiskRefreshers();
-            InitializeIntegratedEntities();
+
+            // TODO: Need to speak with Ronald to get the queue for transfer working
+            // InitializeIntegratedEntities();
         }
 
         public void Terminate()
@@ -53,20 +55,20 @@ namespace Umbraco.Commerce.Deploy.Composing
         {
             // Add in integrated transfer entities
             transferEntityService.RegisterTransferEntityType<ProductAttributeReadOnly>(
-                UmbracoCommerceConstants.UdiEntityType.ProductAttribute,
+                "uc:product-attributes",
                 "Product Attributes",
                 new DeployRegisteredEntityTypeDetailOptions
                 {
                     SupportsQueueForTransfer = true,
-                    SupportsQueueForTransferOfDescendents = true,
+                    //SupportsQueueForTransferOfDescendents = true,
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
-                    //SupportsImportExport = true,
+                    SupportsImportExport = true,
                     //SupportsExportOfDescendants = true
                 },
                 false,
-                Cms.Constants.Trees.Stores.Alias,
+                "commerce",
                 (string routePath, HttpContext httpContext) => MatchesRoutePath(routePath, "productattribute"),
                 (string nodeId, HttpContext httpContext) => MatchesNodeId(
                     nodeId,
@@ -95,20 +97,20 @@ namespace Umbraco.Commerce.Deploy.Composing
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
 
             transferEntityService.RegisterTransferEntityType<ProductAttributePresetReadOnly>(
-                UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset,
+                "uc:product-attribute-presets",
                 "Product Attribute Presets",
                 new DeployRegisteredEntityTypeDetailOptions
                 {
                     SupportsQueueForTransfer = true,
-                    SupportsQueueForTransferOfDescendents = true,
+                    //SupportsQueueForTransferOfDescendents = true,
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
-                    //SupportsImportExport = true,
+                    SupportsImportExport = true,
                     //SupportsExportOfDescendants = true
                 },
                 false,
-                Cms.Constants.Trees.Stores.Alias,
+                "commerce",
                 (string routePath, HttpContext httpContext) => MatchesRoutePath(routePath, "productattributepreset"),
                 (string nodeId, HttpContext httpContext) => MatchesNodeId(
                     nodeId,
