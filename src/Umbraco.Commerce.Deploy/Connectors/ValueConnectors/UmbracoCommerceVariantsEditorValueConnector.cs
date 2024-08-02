@@ -69,8 +69,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 }
             }
 
-            return jsonSerializer.Serialize(result);
+            result.StoreId = storeValue.StoreId;
 
+            var artifact = jsonSerializer.Serialize(result);
+
+            JsonObject? artifactJson = jsonSerializer.Deserialize<JsonObject>(artifact.ToString()!);
+
+            artifactJson!.Remove("storeId");
+            artifactJson!.Add("storeId", storeValue.StoreId);
+
+            return jsonSerializer.Serialize(artifactJson);
         }
 
         public override async Task<object?> FromArtifactAsync(string? value, IPropertyType propertyType, object? currentValue,
@@ -107,6 +115,8 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
         public class VariantsBlockEditorValue : BlockValue<VariantsBlockEditorLayoutItem>
         {
             public override string PropertyEditorAlias => "Umbraco.Commerce.VariantsEditor";
+
+            public Guid? StoreId { get; set; }
         }
 
         public class VariantsBlockEditorLayoutItem : IBlockLayoutItem
