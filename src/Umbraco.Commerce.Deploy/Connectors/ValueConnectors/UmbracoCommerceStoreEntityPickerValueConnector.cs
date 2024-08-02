@@ -67,13 +67,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             IContextCache contextCache,
             CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(value) || !UdiHelper.TryParseGuidUdi(value, out GuidUdi udi))
+            if (string.IsNullOrWhiteSpace(value) || !UdiHelper.TryParseGuidUdi(value, out GuidUdi? udi))
             {
                 return null;
             }
 
-            EntityBase? entity =
-                await GetEntityAsync(udi.EntityType, udi.Guid, cancellationToken).ConfigureAwait(false);
+            EntityBase? entity = await GetEntityAsync(udi!.EntityType, udi.Guid, cancellationToken).ConfigureAwait(false);
 
             return entity != null ? entity.Id.ToString() : null;
         }
@@ -104,6 +103,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                         return UmbracoCommerceConstants.UdiEntityType.TaxClass;
                     case "EmailTemplate":
                         return UmbracoCommerceConstants.UdiEntityType.EmailTemplate;
+                    case "ExportTemplate":
+                        return UmbracoCommerceConstants.UdiEntityType.ExportTemplate;
+                    case "PrintTemplate":
+                        return UmbracoCommerceConstants.UdiEntityType.PrintTemplate;
                     case "Discount": // Not sure if discounts should transfer as these are "user generated"
                         return UmbracoCommerceConstants.UdiEntityType.Discount;
                 }
@@ -132,6 +135,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                     return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetTaxClass(id));
                 case UmbracoCommerceConstants.UdiEntityType.EmailTemplate:
                     return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetEmailTemplate(id));
+                case UmbracoCommerceConstants.UdiEntityType.ExportTemplate:
+                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetExportTemplate(id));
+                case UmbracoCommerceConstants.UdiEntityType.PrintTemplate:
+                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetPrintTemplate(id));
                 case UmbracoCommerceConstants.UdiEntityType.Discount:  // Not sure if discounts should transfer as these are "user generated"
                     return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetDiscount(id));
             }

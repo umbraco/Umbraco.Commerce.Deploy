@@ -53,7 +53,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             IContextCache contextCache,
             CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(value) || !UdiHelper.TryParseGuidUdi(value, out GuidUdi udi) || udi.EntityType != UmbracoCommerceConstants.UdiEntityType.Store)
+            if (string.IsNullOrWhiteSpace(value) || !UdiHelper.TryParseGuidUdi(value, out GuidUdi? udi) || udi!.EntityType != UmbracoCommerceConstants.UdiEntityType.Store)
             {
                 return null;
             }

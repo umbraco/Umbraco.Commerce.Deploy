@@ -47,7 +47,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             {
                 var udi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, kvp.Key);
 
-                // Because we store Guid IDs anyway we don't neceserily need to fetch
+                // Because we store Guid IDs anyway we don't necessarily need to fetch
                 // the Currency entity to look anything up, it's mostly a question
                 // of whether we want to validate the Currency exists. I'm not sure
                 // whether this should really be the responsibility of the property editor
@@ -84,7 +84,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             foreach (KeyValuePair<string, decimal?> kvp in srcDict)
             {
-                if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi udi) && udi.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
+                if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) && udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
                 {
                     CurrencyReadOnly? currencyEntity = umbracoCommerceApi.GetCurrency(udi.Guid);
                     if (currencyEntity != null)
