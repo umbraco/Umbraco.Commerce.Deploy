@@ -34,6 +34,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             }
 
             StoreReadOnly? store = umbracoCommerceApi.GetStore(storeId);
+
             if (store == null)
             {
                 return null;
@@ -60,12 +61,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             StoreReadOnly? store = umbracoCommerceApi.GetStore(udi.Guid);
 
-            if (store != null)
-            {
-                return store.Id.ToString();
-            }
-
-            return null;
+            return store != null ? store.Id.ToString() : null;
         }
     }
 }
