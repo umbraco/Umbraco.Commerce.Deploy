@@ -42,17 +42,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            if (!jsonSerializer.TryDeserialize(value, out VariantsBlockEditorValueBase? storeValue) || !storeValue.StoreId.HasValue)
-            {
-                return null;
-            }
-
             if (!jsonSerializer.TryDeserialize(value, out VariantsBlockEditorValue? result))
             {
                 return null;
             }
 
             await ToArtifactAsync(result, dependencies, contextCache, cancellationToken).ConfigureAwait(false);
+
+            // If we don't have a store id then we can't extract the product attribute dependencies
+            // so we can just return the serialized value and hope the product attributes are there
+            if (!jsonSerializer.TryDeserialize(value, out VariantsBlockEditorValueBase? storeValue) || !storeValue.StoreId.HasValue)
+            {
+                return jsonSerializer.Serialize(result);;
+            }
 
             IEnumerable<string>? productAttributeAliases = result.GetLayouts()?.SelectMany(x => x.Config.Attributes.Keys)
                 .Distinct();
@@ -73,6 +75,8 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             var artifact = jsonSerializer.Serialize(result);
 
+            // The block grid json converter will strip any none expected properties so we need to
+            // temporarily deserialize the artifact as a generic JsonObject and add the store id back in
             JsonObject? artifactJson = jsonSerializer.Deserialize<JsonObject>(artifact.ToString()!);
 
             artifactJson!.Remove("storeId");
@@ -98,7 +102,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             {
                 return artifact;
             }
-
+            
+            // The block grid json converter will strip any none expected properties so we need to
+            // temporarily deserialize the artifact as a generic JsonObject and add the store id back in
             JsonObject? artifactJson = jsonSerializer.Deserialize<JsonObject>(artifact.ToString()!);
 
             artifactJson!.Remove("storeId");
