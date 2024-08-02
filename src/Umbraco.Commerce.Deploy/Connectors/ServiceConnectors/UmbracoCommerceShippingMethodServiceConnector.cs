@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http.Json;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
@@ -13,6 +13,7 @@ using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Deploy.Core;
+
 using StringExtensions = Umbraco.Commerce.Extensions.StringExtensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
@@ -25,7 +26,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         : UmbracoCommerceStoreEntityServiceConnectorBase<ShippingMethodArtifact, ShippingMethodReadOnly, ShippingMethod,
             ShippingMethodState>(umbracoCommerceApi, settingsAccessor)
     {
-        private readonly JsonSerializerOptions _jsonSerializerOptions = jsonOptions.Get(DeployConstants.JsonOptionsNames.Deploy).SerializerOptions;
+        private readonly JsonSerializerOptions _jsonSerializerOptions = jsonOptions.Get(DeployConstants.JsonOptionsNames.Deploy).JsonSerializerOptions;
 
         protected override int[] ProcessPasses => new[]
         {
