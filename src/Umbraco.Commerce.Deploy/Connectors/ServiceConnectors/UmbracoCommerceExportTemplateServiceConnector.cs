@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
@@ -12,19 +15,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.ExportTemplate, UdiType.GuidUdi)]
     public class UmbracoCommerceExportTemplateServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ExportTemplateArtifact, ExportTemplateReadOnly, ExportTemplate, ExportTemplateState>
     {
-        public override int[] ProcessPasses => new[]
+        protected override int[] ProcessPasses => new[]
         {
             2
         };
 
-        public override string[] ValidOpenSelectors => new[]
+        protected override string[] ValidOpenSelectors => new[]
         {
             "this",
             "this-and-descendants",
             "descendants"
         };
 
-        public override string AllEntitiesRangeName => "All Umbraco Commerce Export Templates";
+        protected override string OpenUdiName => "All Umbraco Commerce Export Templates";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.ExportTemplate;
 
@@ -35,25 +38,27 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override string GetEntityName(ExportTemplateReadOnly entity)
             => entity.Name;
 
-        public override ExportTemplateReadOnly GetEntity(Guid id)
-            => _umbracoCommerceApi.GetExportTemplate(id);
+        public override Task<ExportTemplateReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult((ExportTemplateReadOnly?)_umbracoCommerceApi.GetExportTemplate(id));
 
-        public override IEnumerable<ExportTemplateReadOnly> GetEntities(Guid storeId)
-            => _umbracoCommerceApi.GetExportTemplates(storeId);
+        public override IAsyncEnumerable<ExportTemplateReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetExportTemplates(storeId).ToAsyncEnumerable();
 
-        public override ExportTemplateArtifact GetArtifact(GuidUdi udi, ExportTemplateReadOnly entity)
+        public override Task<ExportTemplateArtifact?> GetArtifactAsync(GuidUdi? udi, ExportTemplateReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
-                return null;
+            {
+                return Task.FromResult<ExportTemplateArtifact?>(null);
+            }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
 
             var dependencies = new ArtifactDependencyCollection
             {
-                new UmbracoCommerceArtifactDependency(storeUdi)
+                new UmbracoCommerceArtifactDependency(storeUdi),
             };
 
-            return new ExportTemplateArtifact(udi, storeUdi, dependencies)
+            return Task.FromResult<ExportTemplateArtifact?>(new ExportTemplateArtifact(udi, storeUdi, dependencies)
             {
                 Name = entity.Name,
                 Alias = entity.Alias,
@@ -63,46 +68,53 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 ExportStrategy = (int)entity.ExportStrategy,
                 TemplateView = entity.TemplateView,
                 SortOrder = entity.SortOrder
-            };
+            });
         }
 
-        public override void Process(ArtifactDeployState<ExportTemplateArtifact, ExportTemplateReadOnly> state, IDeployContext context, int pass)
+        public override async Task ProcessAsync(ArtifactDeployState<ExportTemplateArtifact, ExportTemplateReadOnly> state, IDeployContext context, int pass, CancellationToken cancellationToken = default)
         {
-            state.NextPass = GetNextPass(ProcessPasses, pass);
+            state.NextPass = GetNextPass(pass);
 
             switch (pass)
             {
                 case 2:
-                    Pass2(state, context);
+                    await Pass2Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(pass));
             }
         }
 
-        private void Pass2(ArtifactDeployState<ExportTemplateArtifact, ExportTemplateReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
+        private Task Pass2Async(ArtifactDeployState<ExportTemplateArtifact, ExportTemplateReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
+                {
+                    ExportTemplateArtifact artifact = state.Artifact;
 
-                artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate);
-                artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
+                    artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate);
+                    artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                var entity = state.Entity?.AsWritable(uow) ?? ExportTemplate.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name);
+                    ExportTemplate? entity = state.Entity?.AsWritable(uow) ?? ExportTemplate.Create(
+                        uow,
+                        artifact.Udi.Guid,
+                        artifact.StoreUdi.Guid,
+                        artifact.Alias,
+                        artifact.Name);
 
-                entity.SetName(artifact.Name, artifact.Alias)
-                    .SetCategory((TemplateCategory)artifact.Category)
-                    .SetFileMimeType(artifact.FileMimeType)
-                    .SetFileExtension(artifact.FileExtension)
-                    .SetExportStrategy((ExportStrategy)artifact.ExportStrategy)
-                    .SetTemplateView(artifact.TemplateView)
-                    .SetSortOrder(artifact.SortOrder);
+                    entity.SetName(artifact.Name, artifact.Alias)
+                        .SetCategory((TemplateCategory)artifact.Category)
+                        .SetFileMimeType(artifact.FileMimeType)
+                        .SetFileExtension(artifact.FileExtension)
+                        .SetExportStrategy((ExportStrategy)artifact.ExportStrategy)
+                        .SetTemplateView(artifact.TemplateView)
+                        .SetSortOrder(artifact.SortOrder);
 
-                _umbracoCommerceApi.SaveExportTemplate(entity);
+                    _umbracoCommerceApi.SaveExportTemplate(entity);
 
-                uow.Complete();
-            });
-        }
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
     }
 }

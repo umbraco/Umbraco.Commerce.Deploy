@@ -5,14 +5,12 @@ using Umbraco.Deploy.Infrastructure.Artifacts;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
 {
-    public abstract class StoreEntityArtifactBase : DeployArtifactBase<GuidUdi>
+    public abstract class StoreEntityArtifactBase(
+        GuidUdi? udi,
+        GuidUdi storeUdi,
+        IEnumerable<ArtifactDependency>? dependencies = null)
+        : DeployArtifactBase<GuidUdi>(udi, dependencies)
     {
-        protected StoreEntityArtifactBase(GuidUdi udi, GuidUdi storeUdi, IEnumerable<ArtifactDependency> dependencies = null)
-            : base(udi, dependencies)
-        {
-            StoreUdi = storeUdi;
-        }
-
-        public GuidUdi StoreUdi { get; set; }
+        public GuidUdi StoreUdi { get; set; } = storeUdi;
     }
 }

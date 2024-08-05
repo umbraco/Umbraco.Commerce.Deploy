@@ -1,128 +1,142 @@
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Nodes;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
-using Umbraco.Cms.Infrastructure.Serialization;
 using Umbraco.Deploy.Core.Connectors.ValueConnectors.Services;
 using Microsoft.Extensions.Logging;
 using Umbraco.Deploy.Infrastructure.Connectors.ValueConnectors;
 using Umbraco.Cms.Core.Models.Blocks;
+using Umbraco.Cms.Core.Serialization;
+using Umbraco.Commerce.Core.Models;
 using Umbraco.Deploy.Core.Migrators;
-using Umbraco.Deploy.Infrastructure.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
     /// <summary>
     /// A Deploy connector for the Umbraco Commerce Variants Editor property editor
     /// </summary>
-    public class UmbracoCommerceVariantsEditorValueConnector : BlockValueConnectorBase, IValueConnector
+    public class UmbracoCommerceVariantsEditorValueConnector(
+        IUmbracoCommerceApi umbracoCommerceApi,
+        IContentTypeService contentTypeService,
+        Lazy<ValueConnectorCollection> valueConnectors,
+        PropertyTypeMigratorCollection propertyTypeMigrators,
+        IJsonSerializer jsonSerializer,
+        ILogger<UmbracoCommerceVariantsEditorValueConnector> logger)
+        : BlockEditorValueConnectorBase<UmbracoCommerceVariantsEditorValueConnector.VariantsBlockEditorValue>(
+            jsonSerializer, contentTypeService, valueConnectors, propertyTypeMigrators, logger), IValueConnector
     {
-        private readonly IUmbracoCommerceApi _umbracoCommerceApi;
-
         public override IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.VariantsEditor" };
 
-        public UmbracoCommerceVariantsEditorValueConnector(
-            IUmbracoCommerceApi umbracoCommerceApi,
-            IContentTypeService contentTypeService,
-            Lazy<ValueConnectorCollection> valueConnectors,
-            PropertyTypeMigratorCollection propertyTypeMigrators,
-            ILogger<UmbracoCommerceVariantsEditorValueConnector> logger)
-            : base(contentTypeService, valueConnectors, propertyTypeMigrators, logger)
+        public override async Task<string?> ToArtifactAsync(object? value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies, IContextCache contextCache,
+            CancellationToken cancellationToken = default)
         {
-            _umbracoCommerceApi = umbracoCommerceApi;
-        }
-
-        public override string ToArtifact(object value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies, IContextCache contextCache)
-        {
-            if (value is string input && input.TryParseJson(out VariantsBlockEditorValue result) && result != null)
+            if (value is null)
             {
-                // Recursive
-                result.Content = ToArtifact(result.Content, dependencies, contextCache).ToList();
-                result.Settings = ToArtifact(result.Settings, dependencies, contextCache).ToList();
+                return null;
+            }
 
-                var productAttributeAliases = result.Layout.Items.SelectMany(x => x.Config.Attributes.Keys)
-                   .Distinct();
+            if (!jsonSerializer.TryDeserialize(value, out VariantsBlockEditorValue? result))
+            {
+                return null;
+            }
 
+            await ToArtifactAsync(result, dependencies, contextCache, cancellationToken).ConfigureAwait(false);
+
+            // If we don't have a store id then we can't extract the product attribute dependencies
+            // so we can just return the serialized value and hope the product attributes are there
+            if (!jsonSerializer.TryDeserialize(value, out VariantsBlockEditorValueBase? storeValue) || !storeValue.StoreId.HasValue)
+            {
+                return jsonSerializer.Serialize(result);;
+            }
+
+            IEnumerable<string>? productAttributeAliases = result.GetLayouts()?.SelectMany(x => x.Config.Attributes.Keys)
+                .Distinct();
+
+            if (productAttributeAliases != null)
+            {
                 foreach (var productAttributeAlias in productAttributeAliases)
                 {
-                    var productAttribute = _umbracoCommerceApi.GetProductAttribute(result.StoreId.Value, productAttributeAlias);
+                    ProductAttributeReadOnly? productAttribute = umbracoCommerceApi.GetProductAttribute(storeValue.StoreId.Value, productAttributeAlias);
                     if (productAttribute != null)
                     {
                         dependencies.Add(new UmbracoCommerceArtifactDependency(productAttribute.GetUdi()));
                     }
                 }
-
-                return JsonConvert.SerializeObject(result, Formatting.None);
             }
 
-            return null;
+            result.StoreId = storeValue.StoreId;
+
+            var artifact = jsonSerializer.Serialize(result);
+
+            // The block grid json converter will strip any none expected properties so we need to
+            // temporarily deserialize the artifact as a generic JsonObject and add the store id back in
+            JsonObject? artifactJson = jsonSerializer.Deserialize<JsonObject>(artifact.ToString()!);
+
+            artifactJson!.Remove("storeId");
+            artifactJson!.Add("storeId", storeValue.StoreId);
+
+            return jsonSerializer.Serialize(artifactJson);
         }
 
-        public override object FromArtifact(string value, IPropertyType propertyType, object currentValue, IDictionary<string, string> propertyEditorAliases, IContextCache contextCache)
+        public override async Task<object?> FromArtifactAsync(string? value, IPropertyType propertyType, object? currentValue,
+            IDictionary<string, string>? propertyEditorAliases, IContextCache contextCache,
+            CancellationToken cancellationToken = new CancellationToken())
         {
-            if (value is string input && input.TryParseJson(out VariantsBlockEditorValue result) && result != null)
+            var artifact = await base.FromArtifactAsync(value, propertyType, currentValue, propertyEditorAliases,
+                contextCache, cancellationToken).ConfigureAwait(false);
+
+            if (artifact == null)
             {
-                // Recursive
-                result.Content = FromArtifact(result.Content, propertyEditorAliases, contextCache).ToList();
-                result.Settings = FromArtifact(result.Settings, propertyEditorAliases, contextCache).ToList();
-
-                return JsonConvert.SerializeObject(result, Formatting.None);
+                return null;
             }
 
-            return null;
+            // If we have an artifact, value can't be null so we can just parse it for a store id
+            if (!jsonSerializer.TryDeserialize(value!, out VariantsBlockEditorValueBase? storeValue) || !storeValue.StoreId.HasValue)
+            {
+                return artifact;
+            }
+            
+            // The block grid json converter will strip any none expected properties so we need to
+            // temporarily deserialize the artifact as a generic JsonObject and add the store id back in
+            JsonObject? artifactJson = jsonSerializer.Deserialize<JsonObject>(artifact.ToString()!);
+
+            artifactJson!.Remove("storeId");
+            artifactJson!.Add("storeId", storeValue.StoreId);
+
+            return jsonSerializer.Serialize(artifactJson);
         }
 
-        object IValueConnector.FromArtifact(string value, IPropertyType propertyType, object currentValue, IContextCache contextCache)
-            => FromArtifact(value, propertyType, currentValue, contextCache);
-
-        string IValueConnector.ToArtifact(object value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies, IContextCache contextCache)
-            => ToArtifact(value, propertyType, dependencies, contextCache);
-
-        public class BaseValue
+        private class VariantsBlockEditorValueBase
         {
-            [JsonProperty("storeId")]
             public Guid? StoreId { get; set; }
         }
 
-        public class VariantsBlockEditorValue : BaseValue
+        public class VariantsBlockEditorValue : BlockValue<VariantsBlockEditorLayoutItem>
         {
-            [JsonProperty("layout")]
-            public VariantsBlockEditorLayout Layout { get; set; }
+            public override string PropertyEditorAlias => "Umbraco.Commerce.VariantsEditor";
 
-            [JsonProperty("contentData")]
-            public IEnumerable<BlockItemData> Content { get; set; }
-
-            [JsonProperty("settingsData")]
-            public IEnumerable<BlockItemData> Settings { get; set; }
+            public Guid? StoreId { get; set; }
         }
 
-        public class VariantsBlockEditorLayout
+        public class VariantsBlockEditorLayoutItem : IBlockLayoutItem
         {
-            [JsonProperty("Umbraco.Commerce.VariantsEditor")]
-            public IEnumerable<VariantsBlockEditorLayoutItem> Items { get; set; }
-        }
+            public Udi? ContentUdi { get; set; }
 
-        public class VariantsBlockEditorLayoutItem
-        {
-            [JsonProperty("contentUdi")]
-            [JsonConverter(typeof(UdiJsonConverter))]
-            public Udi ContentUdi { get; set; }
-
-            [JsonProperty("config")]
+            public Udi? SettingsUdi { get; set; }
             public ProductVariantConfig Config { get; set; }
         }
 
         public class ProductVariantConfig
         {
-            [JsonProperty("attributes")]
-            public IDictionary<string, string> Attributes { get; set; }
+            public IDictionary<string, string> Attributes { get; set; } = new Dictionary<string, string>();
 
-            [JsonProperty("isDefault")]
             public bool IsDefault { get; set; }
         }
     }

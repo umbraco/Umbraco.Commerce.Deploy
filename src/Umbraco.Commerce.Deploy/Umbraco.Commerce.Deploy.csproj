@@ -1,8 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
         <Title>Umbraco Commerce Deploy</Title>
         <Description>Umbraco Commerce Deploy</Description>
+      <StaticWebAssetBasePath>App_Plugins/UmbracoCommerceDeploy</StaticWebAssetBasePath>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -10,11 +12,22 @@
         <PackageReference Include="Umbraco.Deploy.Infrastructure" />
     </ItemGroup>
 
-    <!-- Workaround for this bug (replace the analyzer name with the one you need to exclude (filename only, no extension) -->
-    <Target Name="RemoveLuceneAnalyzer" BeforeTargets="CoreCompile">
-        <ItemGroup>
-            <Analyzer Remove="@(Analyzer)" Condition="%(FileName) == 'Lucene.Net.CodeAnalysis.CSharp'" />
-        </ItemGroup>
-    </Target>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Update umbraco-package.json files with current build version -->
+  <!-- Assumes that the client assets have already been built to wwwroot -->
+  <Target Name="UpdatePackageManifestVersion" BeforeTargets="BeforeBuild" DependsOnTargets="GetBuildVersion;GetUmbracoBuildVersion" Condition="Exists('wwwroot\umbraco-package.json')">
+    <Message Text="Update umbraco-package.json files with current build version" Importance="high" />
+    <ItemGroup>
+      <_PackageManifestFiles Include="wwwroot\umbraco-package.json" />
+    </ItemGroup>
+    <JsonPathUpdateValue JsonFile="%(_PackageManifestFiles.FullPath)" Path="$.version" Value="&quot;$(PackageVersion)&quot;" />
+  </Target>
 
 </Project>

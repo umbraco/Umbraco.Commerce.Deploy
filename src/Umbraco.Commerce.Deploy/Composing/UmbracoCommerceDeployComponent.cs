@@ -10,36 +10,30 @@ using System;
 using Umbraco.Extensions;
 using Umbraco.Cms.Core;
 using System.Linq;
+using System.Threading.Tasks;
+using Umbraco.Deploy.Core;
 
 namespace Umbraco.Commerce.Deploy.Composing
 {
-    public partial class UmbracoCommerceDeployComponent : IComponent
+    public partial class UmbracoCommerceDeployComponent(
+        IDiskEntityService diskEntityService,
+        IServiceConnectorFactory serviceConnectorFactory,
+        ITransferEntityService transferEntityService)
+        : IComponent
     {
-        private readonly IDiskEntityService _diskEntityService;
-        private readonly IServiceConnectorFactory _serviceConnectorFactory;
-        private readonly ITransferEntityService _transferEntityService;
-
-        public UmbracoCommerceDeployComponent(
-            IDiskEntityService diskEntityService,
-            IServiceConnectorFactory serviceConnectorFactory,
-            ITransferEntityService transferEntityService)
-        {
-            _diskEntityService = diskEntityService;
-            _serviceConnectorFactory = serviceConnectorFactory;
-            _transferEntityService = transferEntityService;
-        }
-
         public void Initialize()
         {
             RegisterUdiTypes();
             InitializeDiskRefreshers();
-            InitializeIntegratedEntities();
+
+            // TODO: Need to speak with Ronald to get the queue for transfer working
+            // InitializeIntegratedEntities();
         }
 
         public void Terminate()
         { }
 
-        private void RegisterUdiTypes()
+        private static void RegisterUdiTypes()
         {
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.Store, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.Location, UdiType.GuidUdi);
@@ -53,7 +47,6 @@ namespace Umbraco.Commerce.Deploy.Composing
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.PrintTemplate, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate, UdiType.GuidUdi);
-
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ProductAttribute, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset, UdiType.GuidUdi);
         }
@@ -61,21 +54,21 @@ namespace Umbraco.Commerce.Deploy.Composing
         private void InitializeIntegratedEntities()
         {
             // Add in integrated transfer entities
-            _transferEntityService.RegisterTransferEntityType<ProductAttributeReadOnly>(
-                UmbracoCommerceConstants.UdiEntityType.ProductAttribute,
+            transferEntityService.RegisterTransferEntityType<ProductAttributeReadOnly>(
+                "uc:product-attributes",
                 "Product Attributes",
                 new DeployRegisteredEntityTypeDetailOptions
                 {
                     SupportsQueueForTransfer = true,
-                    SupportsQueueForTransferOfDescendents = true,
+                    //SupportsQueueForTransferOfDescendents = true,
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
-                    //SupportsImportExport = true,
+                    SupportsImportExport = true,
                     //SupportsExportOfDescendants = true
                 },
                 false,
-                Cms.Constants.Trees.Stores.Alias,
+                "commerce",
                 (string routePath, HttpContext httpContext) => MatchesRoutePath(routePath, "productattribute"),
                 (string nodeId, HttpContext httpContext) => MatchesNodeId(
                     nodeId,
@@ -103,21 +96,21 @@ namespace Umbraco.Commerce.Deploy.Composing
                 });
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
 
-            _transferEntityService.RegisterTransferEntityType<ProductAttributePresetReadOnly>(
-                UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset,
+            transferEntityService.RegisterTransferEntityType<ProductAttributePresetReadOnly>(
+                "uc:product-attribute-presets",
                 "Product Attribute Presets",
                 new DeployRegisteredEntityTypeDetailOptions
                 {
                     SupportsQueueForTransfer = true,
-                    SupportsQueueForTransferOfDescendents = true,
+                    //SupportsQueueForTransferOfDescendents = true,
                     SupportsRestore = true,
                     PermittedToRestore = true,
                     SupportsPartialRestore = true,
-                    //SupportsImportExport = true,
+                    SupportsImportExport = true,
                     //SupportsExportOfDescendants = true
                 },
                 false,
-                Cms.Constants.Trees.Stores.Alias,
+                "commerce",
                 (string routePath, HttpContext httpContext) => MatchesRoutePath(routePath, "productattributepreset"),
                 (string nodeId, HttpContext httpContext) => MatchesNodeId(
                     nodeId,
@@ -146,8 +139,9 @@ namespace Umbraco.Commerce.Deploy.Composing
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
         }
 
+        // TODO: This path is wrong
         private static bool MatchesRoutePath(string routePath, string routePartPrefix)
-            => routePath.StartsWith($"commerce/commerce/{routePartPrefix}-");
+            => routePath.InvariantStartsWith($"commerce/commerce/{routePartPrefix}-");
 
         private static bool MatchesNodeId(string nodeId, HttpContext httpContext, Cms.Constants.Trees.Stores.NodeType[] nodeTypes)
         {
@@ -168,80 +162,106 @@ namespace Umbraco.Commerce.Deploy.Composing
 
         private void InitializeDiskRefreshers()
         {
-            // Add in settings entities as valid Disk entities that can be written out	
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Store);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Location);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.OrderStatus);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Country);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Region);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Currency);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.PrintTemplate);
-            _diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate);
+            // Add in settings entities as valid Disk entities that can be written out
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Store);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Location);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.OrderStatus);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Country);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Region);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Currency);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.PrintTemplate);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate);
 
             // TODO: Other entities
 
             // Stores
-            EventHub.NotificationEvents.OnStoreSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.Store) }));
-            EventHub.NotificationEvents.OnStoreDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.Store) }));
+            EventHub.NotificationEvents.OnStoreSaved((e) => WriteEntityArtifact(e.Store));
+            EventHub.NotificationEvents.OnStoreDeleted((e) => DeleteEntityArtifact(e.Store));
 
             // Location
-            EventHub.NotificationEvents.OnLocationSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.Location) }));
-            EventHub.NotificationEvents.OnLocationDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.Location) }));
+            EventHub.NotificationEvents.OnLocationSaved((e) => WriteEntityArtifact(e.Location));
+            EventHub.NotificationEvents.OnLocationDeleted((e) => DeleteEntityArtifact(e.Location));
 
             // OrderStatus
-            EventHub.NotificationEvents.OnOrderStatusSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.OrderStatus) }));
-            EventHub.NotificationEvents.OnOrderStatusDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.OrderStatus) }));
+            EventHub.NotificationEvents.OnOrderStatusSaved((e) => WriteEntityArtifact(e.OrderStatus));
+            EventHub.NotificationEvents.OnOrderStatusDeleted((e) => DeleteEntityArtifact(e.OrderStatus));
 
             // ShippingMethod
-            EventHub.NotificationEvents.OnShippingMethodSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.ShippingMethod) }));
-            EventHub.NotificationEvents.OnShippingMethodDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.ShippingMethod) }));
+            EventHub.NotificationEvents.OnShippingMethodSaved((e) => WriteEntityArtifact(e.ShippingMethod));
+            EventHub.NotificationEvents.OnShippingMethodDeleted((e) => DeleteEntityArtifact(e.ShippingMethod));
 
             // PaymentMethod
-            EventHub.NotificationEvents.OnPaymentMethodSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.PaymentMethod) }));
-            EventHub.NotificationEvents.OnPaymentMethodDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.PaymentMethod) }));
+            EventHub.NotificationEvents.OnPaymentMethodSaved((e) => WriteEntityArtifact(e.PaymentMethod));
+            EventHub.NotificationEvents.OnPaymentMethodDeleted((e) => DeleteEntityArtifact(e.PaymentMethod));
 
             // Country
-            EventHub.NotificationEvents.OnCountrySaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.Country) }));
-            EventHub.NotificationEvents.OnCountryDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.Country) }));
+            EventHub.NotificationEvents.OnCountrySaved((e) => WriteEntityArtifact(e.Country));
+            EventHub.NotificationEvents.OnCountryDeleted((e) => DeleteEntityArtifact(e.Country));
 
             // Region
-            EventHub.NotificationEvents.OnRegionSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.Region) }));
-            EventHub.NotificationEvents.OnRegionDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.Region) }));
+            EventHub.NotificationEvents.OnRegionSaved((e) => WriteEntityArtifact(e.Region));
+            EventHub.NotificationEvents.OnRegionDeleted((e) => DeleteEntityArtifact(e.Region));
 
             // Currency
-            EventHub.NotificationEvents.OnCurrencySaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.Currency) }));
-            EventHub.NotificationEvents.OnCurrencyDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.Currency) }));
+            EventHub.NotificationEvents.OnCurrencySaved((e) => WriteEntityArtifact(e.Currency));
+            EventHub.NotificationEvents.OnCurrencyDeleted((e) => DeleteEntityArtifact(e.Currency));
 
             // TaxClass
-            EventHub.NotificationEvents.OnTaxClassSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.TaxClass) }));
-            EventHub.NotificationEvents.OnTaxClassDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.TaxClass) }));
+            EventHub.NotificationEvents.OnTaxClassSaved((e) => WriteEntityArtifact(e.TaxClass));
+            EventHub.NotificationEvents.OnTaxClassDeleted((e) => DeleteEntityArtifact(e.TaxClass));
 
             // EmailTemplate
-            EventHub.NotificationEvents.OnEmailTemplateSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.EmailTemplate) }));
-            EventHub.NotificationEvents.OnEmailTemplateDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.EmailTemplate) }));
+            EventHub.NotificationEvents.OnEmailTemplateSaved((e) => WriteEntityArtifact(e.EmailTemplate));
+            EventHub.NotificationEvents.OnEmailTemplateDeleted((e) => DeleteEntityArtifact(e.EmailTemplate));
 
             // PrintTemplate
-            EventHub.NotificationEvents.OnPrintTemplateSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.PrintTemplate) }));
-            EventHub.NotificationEvents.OnPrintTemplateDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.PrintTemplate) }));
+            EventHub.NotificationEvents.OnPrintTemplateSaved((e) => WriteEntityArtifact(e.PrintTemplate));
+            EventHub.NotificationEvents.OnPrintTemplateDeleted((e) => DeleteEntityArtifact(e.PrintTemplate));
 
             // ExportTemplate
-            EventHub.NotificationEvents.OnExportTemplateSaved((e) => _diskEntityService.WriteArtifacts(new[] { GetEntityArtifact(e.ExportTemplate) }));
-            EventHub.NotificationEvents.OnExportTemplateDeleted((e) => _diskEntityService.DeleteArtifacts(new[] { GetEntityArtifact(e.ExportTemplate) }));
+            EventHub.NotificationEvents.OnExportTemplateSaved((e) => WriteEntityArtifact(e.ExportTemplate));
+            EventHub.NotificationEvents.OnExportTemplateDeleted((e) => DeleteEntityArtifact(e.ExportTemplate));
 
             // TODO: Other entity events
         }
 
-        private IArtifact GetEntityArtifact(EntityBase entity)
-        {
-            var udi = entity.GetUdi();
+        private void WriteEntityArtifact(EntityBase entity) =>
+            AsyncHelper.RunSync(async () =>
+            {
+                IArtifact? artifact = await GetEntityArtifactAsync(entity).ConfigureAwait(false);
+                if (artifact != null)
+                {
+                    await diskEntityService.WriteArtifactsAsync(new[] { artifact! }).ConfigureAwait(false);
+                }
+            });
 
-            return _serviceConnectorFactory
+        private void DeleteEntityArtifact(EntityBase entity) =>
+            AsyncHelper.RunSync(async () =>
+            {
+                IArtifact? artifact = await GetEntityArtifactAsync(entity).ConfigureAwait(false);
+                if (artifact != null)
+                {
+                    diskEntityService.DeleteArtifacts(new[] { artifact! });
+                }
+            });
+
+        private async Task<IArtifact?> GetEntityArtifactAsync(EntityBase entity)
+        {
+            GuidUdi? udi = entity.GetUdi();
+
+            if (udi == null)
+            {
+                return null;
+            }
+
+            return await serviceConnectorFactory
                 .GetConnector(udi.EntityType)
-                .GetArtifact(entity, null);
+                .GetArtifactAsync(entity, new DictionaryCache())
+                .ConfigureAwait(false);
         }
     }
 }

@@ -4,12 +4,12 @@ using Umbraco.Cms.Core.Deploy;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
 {
-    public class PrintTemplateArtifact : StoreEntityArtifactBase
+    public class PrintTemplateArtifact(
+        GuidUdi? udi,
+        GuidUdi storeUdi,
+        IEnumerable<ArtifactDependency> dependencies = null)
+        : StoreEntityArtifactBase(udi, storeUdi, dependencies)
     {
-        public PrintTemplateArtifact(GuidUdi udi, GuidUdi storeUdi, IEnumerable<ArtifactDependency> dependencies = null)
-            : base(udi, storeUdi, dependencies)
-        { }
-
         public int Category { get; set; }
 
         public string TemplateView { get; set; }

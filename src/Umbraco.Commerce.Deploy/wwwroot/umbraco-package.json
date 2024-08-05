@@ -1,0 +1,14 @@
+{
+  "id": "Umbraco.Commerce.Deploy",
+  "name": "Umbraco Commerce Deploy",
+  "version": "14.0.0--beta1.preview.16.gde5af20",
+  "allowPackageTelemetry": true,
+  "extensions": [
+    {
+      "name": "Umbraco Commerce Deploy EntryPoint",
+      "alias": "Uc.Deploy.EntryPoint",
+      "type": "entryPoint",
+      "js": "/App_Plugins/UmbracoCommerceDeploy/umbraco-commerce-deploy.js"
+    }
+  ]
+}

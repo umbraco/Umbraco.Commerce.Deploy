@@ -4,14 +4,13 @@ using Umbraco.Cms.Core.Deploy;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
 {
-    public class RegionArtifact : StoreEntityArtifactBase
+    public class RegionArtifact(
+        GuidUdi? udi,
+        GuidUdi storeUdi,
+        GuidUdi countryUdi,
+        IEnumerable<ArtifactDependency> dependencies = null)
+        : StoreEntityArtifactBase(udi, storeUdi, dependencies)
     {
-        public RegionArtifact(GuidUdi udi, GuidUdi storeUdi, GuidUdi countryUdi, IEnumerable<ArtifactDependency> dependencies = null)
-            : base(udi, storeUdi, dependencies)
-        {
-            CountryUdi = countryUdi;
-        }
-
         public string Code { get; set; }
 
         public new string Alias
@@ -19,9 +18,9 @@ namespace Umbraco.Commerce.Deploy.Artifacts
             get => Code;
         }
 
-        public GuidUdi CountryUdi { get; set; }
-        public GuidUdi DefaultPaymentMethodUdi { get; set; }
-        public GuidUdi DefaultShippingMethodUdi { get; set; }
+        public GuidUdi CountryUdi { get; set; } = countryUdi;
+        public GuidUdi? DefaultPaymentMethodUdi { get; set; }
+        public GuidUdi? DefaultShippingMethodUdi { get; set; }
         public int SortOrder { get; set; }
     }
 }
