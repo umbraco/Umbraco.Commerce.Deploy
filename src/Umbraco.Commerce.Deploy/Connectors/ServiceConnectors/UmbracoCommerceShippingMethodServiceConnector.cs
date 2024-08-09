@@ -244,43 +244,6 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     entity.ClearTaxClass();
                 }
 
-                // Calculation config
-                if (artifact.CalculationConfig != null)
-                {
-                    if (artifact.CalculationMode == (int)ShippingCalculationMode.Fixed)
-                    {
-                        var cfgArtifact = artifact.CalculationConfig.ToObject<FixedRateShippingCalculationConfigArtifact>();
-                        var prices = new List<ServicePrice>();
-
-                        foreach (var price in cfgArtifact.Prices)
-                        {
-                            price.CurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
-
-                            if (price.CountryUdi != null)
-                                price.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
-
-                            if (price.RegionUdi != null)
-                                price.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
-
-                            prices.Add(new ServicePrice(price.Value, price.CurrencyUdi.Guid, price.CountryUdi?.Guid, price.RegionUdi?.Guid));
-                        }
-
-                        entity.SetCalculationConfig(new FixedRateShippingCalculationConfig(prices));
-                    }
-                    else if (artifact.CalculationMode == (int)ShippingCalculationMode.Dynamic)
-                    {
-                        entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<DynamicRateShippingCalculationConfig>());
-                    }
-                    else if (artifact.CalculationMode == (int)ShippingCalculationMode.Realtime)
-                    {
-                        entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<RealtimeRateShippingCalculationConfig>());
-                    }
-                    else
-                    {
-                        throw new ApplicationException($"Unknown calculation mode: {artifact.CalculationMode}");
-                    }
-                }
-
                 // AllowedCountryRegions
                 var allowedCountryRegionsToRemove = entity.AllowedCountryRegions
                     .Where(x => artifact.AllowedCountryRegions == null || !artifact.AllowedCountryRegions.Any(y => y.CountryUdi.Guid == x.CountryId
@@ -315,6 +278,43 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     else
                     {
                         entity.DisallowInCountry(acr.CountryId);
+                    }
+                }
+
+                // Calculation config
+                if (artifact.CalculationConfig != null)
+                {
+                    if (artifact.CalculationMode == (int)ShippingCalculationMode.Fixed)
+                    {
+                        var cfgArtifact = artifact.CalculationConfig.ToObject<FixedRateShippingCalculationConfigArtifact>();
+                        var prices = new List<ServicePrice>();
+
+                        foreach (var price in cfgArtifact.Prices)
+                        {
+                            price.CurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
+
+                            if (price.CountryUdi != null)
+                                price.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
+
+                            if (price.RegionUdi != null)
+                                price.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
+
+                            prices.Add(new ServicePrice(price.Value, price.CurrencyUdi.Guid, price.CountryUdi?.Guid, price.RegionUdi?.Guid));
+                        }
+
+                        entity.SetCalculationConfig(new FixedRateShippingCalculationConfig(prices));
+                    }
+                    else if (artifact.CalculationMode == (int)ShippingCalculationMode.Dynamic)
+                    {
+                        entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<DynamicRateShippingCalculationConfig>());
+                    }
+                    else if (artifact.CalculationMode == (int)ShippingCalculationMode.Realtime)
+                    {
+                        entity.SetCalculationConfig(artifact.CalculationConfig.ToObject<RealtimeRateShippingCalculationConfig>());
+                    }
+                    else
+                    {
+                        throw new ApplicationException($"Unknown calculation mode: {artifact.CalculationMode}");
                     }
                 }
 
