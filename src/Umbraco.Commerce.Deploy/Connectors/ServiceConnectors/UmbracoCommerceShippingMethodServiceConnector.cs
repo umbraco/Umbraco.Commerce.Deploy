@@ -266,7 +266,45 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             entity.ClearTaxClass();
                         }
 
+                        // AllowedCountryRegions
+                        var allowedCountryRegionsToRemove = entity.AllowedCountryRegions
+                            .Where(x => artifact.AllowedCountryRegions == null || !artifact.AllowedCountryRegions.Any(y => y.CountryUdi.Guid == x.CountryId
+                                && y.RegionUdi?.Guid == x.RegionId))
+                            .ToList();
+
+                        if (artifact.AllowedCountryRegions != null)
+                        {
+                            foreach (AllowedCountryRegionArtifact acr in artifact.AllowedCountryRegions)
+                            {
+                                acr.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
+
+                                if (acr.RegionUdi != null)
+                                {
+                                    acr.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
+
+                                    entity.AllowInRegion(acr.CountryUdi.Guid, acr.RegionUdi.Guid);
+                                }
+                                else
+                                {
+                                    entity.AllowInCountry(acr.CountryUdi.Guid);
+                                }
+                            }
+                        }
+
+                        foreach (AllowedCountryRegion? acr in allowedCountryRegionsToRemove)
+                        {
+                            if (acr.RegionId != null)
+                            {
+                                entity.DisallowInRegion(acr.CountryId, acr.RegionId.Value);
+                            }
+                            else
+                            {
+                                entity.DisallowInCountry(acr.CountryId);
+                            }
+                        }
+
                         // Calculation config
+                        // Must come after AllowedCountryRegions as it may depend on them
                         if (artifact.CalculationConfig != null)
                         {
                             if (artifact.CalculationMode == (int)ShippingCalculationMode.Fixed)
@@ -305,43 +343,6 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             else
                             {
                                 throw new ApplicationException($"Unknown calculation mode: {artifact.CalculationMode}");
-                            }
-                        }
-
-                        // AllowedCountryRegions
-                        var allowedCountryRegionsToRemove = entity.AllowedCountryRegions
-                            .Where(x => artifact.AllowedCountryRegions == null || !artifact.AllowedCountryRegions.Any(y => y.CountryUdi.Guid == x.CountryId
-                                && y.RegionUdi?.Guid == x.RegionId))
-                            .ToList();
-
-                        if (artifact.AllowedCountryRegions != null)
-                        {
-                            foreach (AllowedCountryRegionArtifact acr in artifact.AllowedCountryRegions)
-                            {
-                                acr.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
-
-                                if (acr.RegionUdi != null)
-                                {
-                                    acr.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
-
-                                    entity.AllowInRegion(acr.CountryUdi.Guid, acr.RegionUdi.Guid);
-                                }
-                                else
-                                {
-                                    entity.AllowInCountry(acr.CountryUdi.Guid);
-                                }
-                            }
-                        }
-
-                        foreach (AllowedCountryRegion? acr in allowedCountryRegionsToRemove)
-                        {
-                            if (acr.RegionId != null)
-                            {
-                                entity.DisallowInRegion(acr.CountryId, acr.RegionId.Value);
-                            }
-                            else
-                            {
-                                entity.DisallowInCountry(acr.CountryId);
                             }
                         }
 
