@@ -1,7 +1,7 @@
 {
   "id": "Umbraco.Commerce.Deploy",
   "name": "Umbraco Commerce Deploy",
-  "version": "14.0.0--beta1.preview.16.gde5af20",
+  "version": "14.0.0--rc1.preview.0.g93bcb4d",
   "allowPackageTelemetry": true,
   "extensions": [
     {
