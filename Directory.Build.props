@@ -32,6 +32,7 @@
 
   <!-- Package validation -->
   <PropertyGroup>
+    <GenerateCompatibilitySuppressionFile>false</GenerateCompatibilitySuppressionFile>
     <EnablePackageValidation>true</EnablePackageValidation>
     <PackageValidationBaselineVersion>14.0.0</PackageValidationBaselineVersion>
     <EnableStrictModeForCompatibleFrameworksInPackage>true</EnableStrictModeForCompatibleFrameworksInPackage>
