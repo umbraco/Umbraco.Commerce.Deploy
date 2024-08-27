@@ -1,52 +1,64 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
-
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Deploy.Core;
+
+using StringExtensions = Umbraco.Commerce.Extensions.StringExtensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.ShippingMethod, UdiType.GuidUdi)]
-    public class UmbracoCommerceShippingMethodServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ShippingMethodArtifact, ShippingMethodReadOnly, ShippingMethod, ShippingMethodState>
+    public class UmbracoCommerceShippingMethodServiceConnector(
+        IUmbracoCommerceApi umbracoCommerceApi,
+        UmbracoCommerceDeploySettingsAccessor settingsAccessor,
+        IOptionsMonitor<JsonOptions> jsonOptions)
+        : UmbracoCommerceStoreEntityServiceConnectorBase<ShippingMethodArtifact, ShippingMethodReadOnly, ShippingMethod,
+            ShippingMethodState>(umbracoCommerceApi, settingsAccessor)
     {
-        public override int[] ProcessPasses => new[]
+        private readonly JsonSerializerOptions _jsonSerializerOptions = jsonOptions.Get(DeployConstants.JsonOptionsNames.Deploy).JsonSerializerOptions;
+
+        protected override int[] ProcessPasses => new[]
         {
             2,4
         };
 
-        public override string[] ValidOpenSelectors => new[]
+        protected override string[] ValidOpenSelectors => new[]
         {
             "this",
             "this-and-descendants",
             "descendants"
         };
 
-        public override string AllEntitiesRangeName => "All Umbraco Commerce Shipping Methods";
+        protected override string OpenUdiName => "All Umbraco Commerce Shipping Methods";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.ShippingMethod;
-
-        public UmbracoCommerceShippingMethodServiceConnector(IUmbracoCommerceApi umbracoCommerceApi, UmbracoCommerceDeploySettingsAccessor settingsAccessor)
-            : base(umbracoCommerceApi, settingsAccessor)
-        { }
 
         public override string GetEntityName(ShippingMethodReadOnly entity)
             => entity.Name;
 
-        public override ShippingMethodReadOnly GetEntity(Guid id)
-            => _umbracoCommerceApi.GetShippingMethod(id);
+        public override Task<ShippingMethodReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult((ShippingMethodReadOnly?)_umbracoCommerceApi.GetShippingMethod(id));
 
-        public override IEnumerable<ShippingMethodReadOnly> GetEntities(Guid storeId)
-            => _umbracoCommerceApi.GetShippingMethods(storeId);
+        public override IAsyncEnumerable<ShippingMethodReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetShippingMethods(storeId).ToAsyncEnumerable();
 
-        public override ShippingMethodArtifact GetArtifact(GuidUdi udi, ShippingMethodReadOnly entity)
+        public override Task<ShippingMethodArtifact?> GetArtifactAsync(GuidUdi? udi, ShippingMethodReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
-                return null;
+            {
+                return Task.FromResult<ShippingMethodArtifact?>(null);
+            }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
 
@@ -61,6 +73,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 Alias = entity.Alias,
                 Sku = entity.Sku,
                 ImageId = entity.ImageId, // Could be a UDI?
+                CalculationMode = (int)entity.CalculationMode,
+                ShippingProviderAlias = entity.ShippingProviderAlias,
+                ShippingProviderSettings = new SortedDictionary<string, string>(entity.ShippingProviderSettings
+                    .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
+                    .ToDictionary(x => x.Key, x => x.Value)), // Could contain UDIs?
                 SortOrder = entity.SortOrder
             };
 
@@ -75,49 +92,64 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 artifact.TaxClassUdi = taxClassDepUdi;
             }
 
-            // Service prices
-            if (entity.Prices.Count > 0)
+            // Only the fixed rate shipping provider has delcared dependencies
+            // that we can deserialize. Dynamic can have a dependency, but because
+            // it's config is all plugin based, we can't be certain of the data structure
+            // and so we just have to pass the value through. Realtime rates don't currently
+            // have any dependencies.
+            if (entity.CalculationConfig != null)
             {
-                var servicesPrices = new List<ServicePriceArtifact>();
-
-                foreach (var price in entity.Prices.OrderBy(x => x.CountryId).ThenBy(x => x.RegionId).ThenBy(x => x.CurrencyId))
+                if (entity is { CalculationMode: ShippingCalculationMode.Fixed, CalculationConfig: FixedRateShippingCalculationConfig calcConfig })
                 {
-                    var spArtifact = new ServicePriceArtifact { Value = price.Value };
+                    var servicesPrices = new List<ServicePriceArtifact>();
 
-                    // Currency
-                    var currencyDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, price.CurrencyId);
-                    var currencyDep = new UmbracoCommerceArtifactDependency(currencyDepUdi);
-
-                    dependencies.Add(currencyDep);
-
-                    spArtifact.CurrencyUdi = currencyDepUdi;
-
-                    // Country
-                    if (price.CountryId.HasValue)
+                    foreach (ServicePrice? price in calcConfig.Prices)
                     {
-                        var countryDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, price.CountryId.Value);
-                        var countryDep = new UmbracoCommerceArtifactDependency(countryDepUdi);
+                        var spArtifact = new ServicePriceArtifact { Value = price.Value };
 
-                        dependencies.Add(countryDep);
+                        // Currency
+                        var currencyDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, price.CurrencyId);
+                        var currencyDep = new UmbracoCommerceArtifactDependency(currencyDepUdi);
 
-                        spArtifact.CountryUdi = countryDepUdi;
+                        dependencies.Add(currencyDep);
+
+                        spArtifact.CurrencyUdi = currencyDepUdi;
+
+                        // Country
+                        if (price.CountryId.HasValue)
+                        {
+                            var countryDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, price.CountryId.Value);
+                            var countryDep = new UmbracoCommerceArtifactDependency(countryDepUdi);
+
+                            dependencies.Add(countryDep);
+
+                            spArtifact.CountryUdi = countryDepUdi;
+                        }
+
+                        // Region
+                        if (price.RegionId.HasValue)
+                        {
+                            var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Region, price.RegionId.Value);
+                            var regionDep = new UmbracoCommerceArtifactDependency(regionDepUdi);
+
+                            dependencies.Add(regionDep);
+
+                            spArtifact.RegionUdi = regionDepUdi;
+                        }
+
+                        servicesPrices.Add(spArtifact);
                     }
 
-                    // Region
-                    if (price.RegionId.HasValue)
+                    artifact.CalculationConfig = JsonSerializer.SerializeToElement(new FixedRateShippingCalculationConfigArtifact
                     {
-                        var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Region, price.RegionId.Value);
-                        var regionDep = new UmbracoCommerceArtifactDependency(regionDepUdi);
-
-                        dependencies.Add(regionDep);
-
-                        spArtifact.RegionUdi = regionDepUdi;
-                    }
-
-                    servicesPrices.Add(spArtifact);
+                        Prices = servicesPrices
+                    }, _jsonSerializerOptions);
                 }
-
-                artifact.Prices = servicesPrices;
+                else
+                {
+                    // No additional processing required
+                    artifact.CalculationConfig = JsonSerializer.SerializeToElement(entity.CalculationConfig, _jsonSerializerOptions);
+                }
             }
 
             // Allowed country regions
@@ -154,161 +186,173 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 artifact.AllowedCountryRegions = allowedCountryRegions;
             }
 
-            return artifact;
+            return Task.FromResult<ShippingMethodArtifact?>(artifact);
         }
 
-        public override void Process(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, int pass)
+        public override async Task ProcessAsync(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, int pass, CancellationToken cancellationToken = default)
         {
-            state.NextPass = GetNextPass(ProcessPasses, pass);
+            state.NextPass = GetNextPass(pass);
 
             switch (pass)
             {
                 case 2:
-                    Pass2(state, context);
+                    await Pass2Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 case 4:
-                    Pass4(state, context);
+                    await Pass4Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(pass));
             }
         }
 
-        private void Pass2(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-
-                artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
-                artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
-
-                var entity = state.Entity?.AsWritable(uow) ?? ShippingMethod.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name);
-
-                entity.SetName(artifact.Name, artifact.Alias)
-                    .SetSku(artifact.Sku)
-                    .SetImage(artifact.ImageId)
-                    .SetSortOrder(artifact.SortOrder);
-
-                _umbracoCommerceApi.SaveShippingMethod(entity);
-
-                state.Entity = entity;
-
-                uow.Complete();
-            });
-        }
-
-        private void Pass4(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-                var entity = _umbracoCommerceApi.GetShippingMethod(state.Entity.Id).AsWritable(uow);
-
-                // TaxClass
-                if (artifact.TaxClassUdi != null)
+        private Task Pass2Async(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
                 {
-                    artifact.TaxClassUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
-                    // TODO: Check the payment method exists?
-                    entity.SetTaxClass(artifact.TaxClassUdi.Guid);
-                }
-                else
-                {
-                    entity.ClearTaxClass();
-                }
+                    ShippingMethodArtifact artifact = state.Artifact;
 
-                // Prices
-                var pricesToRemove = entity.Prices
-                    .Where(x => artifact.Prices == null || !artifact.Prices.Any(y => y.CountryUdi?.Guid == x.CountryId
-                        && y.RegionUdi?.Guid == x.RegionId
-                        && y.CurrencyUdi.Guid == x.CurrencyId))
-                    .ToList();
+                    artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
+                    artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                if (artifact.Prices != null)
+                    ShippingMethod? entity = state.Entity?.AsWritable(uow) ?? ShippingMethod.Create(
+                        uow,
+                        artifact.Udi.Guid,
+                        artifact.StoreUdi.Guid,
+                        artifact.Alias,
+                        artifact.Name,
+                        artifact.ShippingProviderAlias,
+                        (ShippingCalculationMode)artifact.CalculationMode);
+
+                    var settings = artifact.ShippingProviderSettings
+                        .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
+                        .ToDictionary(x => x.Key, x => x.Value);
+
+                    entity.SetName(artifact.Name, artifact.Alias)
+                        .SetSku(artifact.Sku)
+                        .SetImage(artifact.ImageId)
+                        .SetSettings(settings, SetBehavior.Merge)
+                        .SetSortOrder(artifact.SortOrder);
+
+                    _umbracoCommerceApi.SaveShippingMethod(entity);
+
+                    state.Entity = entity;
+
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
+
+        private Task Pass4Async(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
                 {
-                    foreach (var price in artifact.Prices)
+                    ShippingMethodArtifact artifact = state.Artifact;
+
+                    if (state.Entity != null)
                     {
-                        price.CurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
+                        ShippingMethod? entity = _umbracoCommerceApi.GetShippingMethod(state.Entity.Id).AsWritable(uow);
 
-                        if (price.CountryUdi == null && price.RegionUdi == null)
+                        // TaxClass
+                        if (artifact.TaxClassUdi != null)
                         {
-                            entity.SetDefaultPriceForCurrency(price.CurrencyUdi.Guid, price.Value);
+                            artifact.TaxClassUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
+
+                            entity.SetTaxClass(artifact.TaxClassUdi.Guid);
                         }
                         else
                         {
-                            price.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
+                            entity.ClearTaxClass();
+                        }
 
-                            if (price.RegionUdi != null)
+                        // AllowedCountryRegions
+                        var allowedCountryRegionsToRemove = entity.AllowedCountryRegions
+                            .Where(x => artifact.AllowedCountryRegions == null || !artifact.AllowedCountryRegions.Any(y => y.CountryUdi.Guid == x.CountryId
+                                && y.RegionUdi?.Guid == x.RegionId))
+                            .ToList();
+
+                        if (artifact.AllowedCountryRegions != null)
+                        {
+                            foreach (AllowedCountryRegionArtifact acr in artifact.AllowedCountryRegions)
                             {
-                                price.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
+                                acr.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
-                                entity.SetRegionPriceForCurrency(price.CountryUdi.Guid, price.RegionUdi.Guid, price.CurrencyUdi.Guid, price.Value);
+                                if (acr.RegionUdi != null)
+                                {
+                                    acr.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
+
+                                    entity.AllowInRegion(acr.CountryUdi.Guid, acr.RegionUdi.Guid);
+                                }
+                                else
+                                {
+                                    entity.AllowInCountry(acr.CountryUdi.Guid);
+                                }
+                            }
+                        }
+
+                        foreach (AllowedCountryRegion? acr in allowedCountryRegionsToRemove)
+                        {
+                            if (acr.RegionId != null)
+                            {
+                                entity.DisallowInRegion(acr.CountryId, acr.RegionId.Value);
                             }
                             else
                             {
-                                entity.SetCountryPriceForCurrency(price.CountryUdi.Guid, price.CurrencyUdi.Guid, price.Value);
+                                entity.DisallowInCountry(acr.CountryId);
                             }
                         }
-                    }
-                }
 
-                foreach (var price in pricesToRemove)
-                {
-                    if (price.CountryId == null && price.RegionId == null)
-                    {
-                        entity.ClearDefaultPriceForCurrency(price.CurrencyId);
-                    }
-                    else if (price.CountryId != null && price.RegionId == null)
-                    {
-                        entity.ClearCountryPriceForCurrency(price.CountryId.Value, price.CurrencyId);
-                    }
-                    else
-                    {
-                        entity.ClearRegionPriceForCurrency(price.CountryId.Value, price.RegionId.Value, price.CurrencyId);
-                    }
-                }
-
-                // AllowedCountryRegions
-                var allowedCountryRegionsToRemove = entity.AllowedCountryRegions
-                    .Where(x => artifact.AllowedCountryRegions == null || !artifact.AllowedCountryRegions.Any(y => y.CountryUdi.Guid == x.CountryId
-                        && y.RegionUdi?.Guid == x.RegionId))
-                    .ToList();
-
-                if (artifact.AllowedCountryRegions != null)
-                {
-                    foreach (var acr in artifact.AllowedCountryRegions)
-                    {
-                        acr.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
-
-                        if (acr.RegionUdi != null)
+                        // Calculation config
+                        // Must come after AllowedCountryRegions as it may depend on them
+                        if (artifact.CalculationConfig != null)
                         {
-                            acr.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
+                            if (artifact.CalculationMode == (int)ShippingCalculationMode.Fixed)
+                            {
+                                FixedRateShippingCalculationConfigArtifact? cfgArtifact = artifact.CalculationConfig?.Deserialize<FixedRateShippingCalculationConfigArtifact>(_jsonSerializerOptions);
 
-                            entity.AllowInRegion(acr.CountryUdi.Guid, acr.RegionUdi.Guid);
+                                var prices = new List<ServicePrice>();
+
+                                foreach (ServicePriceArtifact price in cfgArtifact.Prices)
+                                {
+                                    price.CurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
+
+                                    if (price.CountryUdi != null)
+                                    {
+                                        price.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
+                                    }
+
+                                    if (price.RegionUdi != null)
+                                    {
+                                        price.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
+                                    }
+
+                                    prices.Add(new ServicePrice(price.Value, price.CurrencyUdi.Guid, price.CountryUdi?.Guid, price.RegionUdi?.Guid));
+                                }
+
+                                entity.SetCalculationConfig(new FixedRateShippingCalculationConfig(prices));
+                            }
+                            else if (artifact.CalculationMode == (int)ShippingCalculationMode.Dynamic)
+                            {
+                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<DynamicRateShippingCalculationConfig>(_jsonSerializerOptions));
+                            }
+                            else if (artifact.CalculationMode == (int)ShippingCalculationMode.Realtime)
+                            {
+                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<RealtimeRateShippingCalculationConfig>(_jsonSerializerOptions));
+                            }
+                            else
+                            {
+                                throw new ApplicationException($"Unknown calculation mode: {artifact.CalculationMode}");
+                            }
                         }
-                        else
-                        {
-                            entity.AllowInCountry(acr.CountryUdi.Guid);
-                        }
-                    }
-                }
 
-                foreach (var acr in allowedCountryRegionsToRemove)
-                {
-                    if (acr.RegionId != null)
-                    {
-                        entity.DisallowInRegion(acr.CountryId, acr.RegionId.Value);
+                        _umbracoCommerceApi.SaveShippingMethod(entity);
                     }
-                    else
-                    {
-                        entity.DisallowInCountry(acr.CountryId);
-                    }
-                }
 
-                _umbracoCommerceApi.SaveShippingMethod(entity);
+                    uow.Complete();
 
-                uow.Complete();
-            });
-        }
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
     }
 }

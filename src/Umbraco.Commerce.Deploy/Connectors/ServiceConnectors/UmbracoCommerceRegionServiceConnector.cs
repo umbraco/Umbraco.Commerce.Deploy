@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
@@ -13,19 +16,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.Region, UdiType.GuidUdi)]
     public class UmbracoCommerceRegionServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<RegionArtifact, RegionReadOnly, Region, RegionState>
     {
-        public override int[] ProcessPasses => new[]
+        protected override int[] ProcessPasses => new[]
         {
             3,4
         };
 
-        public override string[] ValidOpenSelectors => new[]
+        protected override string[] ValidOpenSelectors => new[]
         {
             "this",
             "this-and-descendants",
             "descendants"
         };
 
-        public override string AllEntitiesRangeName => "All Umbraco Commerce Regions";
+        protected override string OpenUdiName => "All Umbraco Commerce Regions";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.Region;
 
@@ -36,16 +39,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override string GetEntityName(RegionReadOnly entity)
             => entity.Name;
 
-        public override RegionReadOnly GetEntity(Guid id)
-            => _umbracoCommerceApi.GetRegion(id);
+        public override Task<RegionReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult((RegionReadOnly?)_umbracoCommerceApi.GetRegion(id));
 
-        public override IEnumerable<RegionReadOnly> GetEntities(Guid storeId)
-            => _umbracoCommerceApi.GetRegions(storeId);
+        public override IAsyncEnumerable<RegionReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetRegions(storeId).ToAsyncEnumerable();
 
-        public override RegionArtifact GetArtifact(GuidUdi udi, RegionReadOnly entity)
+        public override Task<RegionArtifact?> GetArtifactAsync(GuidUdi? udi, RegionReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
-                return null;
+            {
+                return Task.FromResult<RegionArtifact?>(null);
+            }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
             var countryUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, entity.CountryId);
@@ -56,7 +61,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 new UmbracoCommerceArtifactDependency(countryUdi)
             };
 
-            var artifcat = new RegionArtifact(udi, storeUdi, countryUdi, dependencies)
+            var artifact = new RegionArtifact(udi, storeUdi, countryUdi, dependencies)
             {
                 Name = entity.Name,
                 Code = entity.Code,
@@ -71,7 +76,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                 dependencies.Add(pmDep);
 
-                artifcat.DefaultPaymentMethodUdi = pmDepUdi;
+                artifact.DefaultPaymentMethodUdi = pmDepUdi;
             }
 
             // Default shipping method
@@ -82,80 +87,94 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                 dependencies.Add(smDep);
 
-                artifcat.DefaultShippingMethodUdi = smDepUdi;
+                artifact.DefaultShippingMethodUdi = smDepUdi;
             }
 
-            return artifcat;
+            return Task.FromResult<RegionArtifact?>(artifact);
         }
 
-        public override void Process(ArtifactDeployState<RegionArtifact, RegionReadOnly> state, IDeployContext context, int pass)
+        public override async Task ProcessAsync(ArtifactDeployState<RegionArtifact, RegionReadOnly> state, IDeployContext context, int pass, CancellationToken cancellationToken = default)
         {
-            state.NextPass = GetNextPass(ProcessPasses, pass);
+            state.NextPass = GetNextPass(pass);
 
             switch (pass)
             {
                 case 3:
-                    Pass3(state, context);
+                    await Pass3Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 case 4:
-                    Pass4(state, context);
+                    await Pass4Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(pass));
             }
         }
 
-        private void Pass3(ArtifactDeployState<RegionArtifact, RegionReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-
-                artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
-                artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
-                artifact.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
-
-                var entity = state.Entity?.AsWritable(uow) ?? Region.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.CountryUdi.Guid, artifact.Code, artifact.Name);
-
-                entity.SetName(artifact.Name)
-                    .SetCode(artifact.Code)
-                    .SetSortOrder(artifact.SortOrder);
-
-                _umbracoCommerceApi.SaveRegion(entity);
-
-                state.Entity = entity;
-
-                uow.Complete();
-            });
-        }
-
-        private void Pass4(ArtifactDeployState<RegionArtifact, RegionReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-                var entity = _umbracoCommerceApi.GetRegion(state.Entity.Id).AsWritable(uow);
-
-                if (artifact.DefaultPaymentMethodUdi != null)
+        private Task Pass3Async(ArtifactDeployState<RegionArtifact, RegionReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
                 {
-                    artifact.DefaultPaymentMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
-                    // TODO: Check the payment method exists?
-                }
+                    RegionArtifact artifact = state.Artifact;
 
-                entity.SetDefaultPaymentMethod(artifact.DefaultPaymentMethodUdi?.Guid);
+                    artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
+                    artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
+                    artifact.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
-                if (artifact.DefaultShippingMethodUdi != null)
+                    Region? entity = state.Entity?.AsWritable(uow) ?? Region.Create(
+                        uow,
+                        artifact.Udi.Guid,
+                        artifact.StoreUdi.Guid,
+                        artifact.CountryUdi.Guid,
+                        artifact.Code,
+                        artifact.Name);
+
+                    entity.SetName(artifact.Name)
+                        .SetCode(artifact.Code)
+                        .SetSortOrder(artifact.SortOrder);
+
+                    _umbracoCommerceApi.SaveRegion(entity);
+
+                    state.Entity = entity;
+
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
+
+        private Task Pass4Async(ArtifactDeployState<RegionArtifact, RegionReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
                 {
-                    artifact.DefaultShippingMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
-                    // TODO: Check the payment method exists?
-                }
+                    RegionArtifact artifact = state.Artifact;
 
-                entity.SetDefaultShippingMethod(artifact.DefaultShippingMethodUdi?.Guid);
+                    if (state.Entity != null)
+                    {
+                        Region? entity = _umbracoCommerceApi.GetRegion(state.Entity.Id).AsWritable(uow);
 
-                _umbracoCommerceApi.SaveRegion(entity);
+                        if (artifact.DefaultPaymentMethodUdi != null)
+                        {
+                            artifact.DefaultPaymentMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
+                            // TODO: Check the payment method exists?
+                        }
 
-                uow.Complete();
-            });
-        }
+                        entity.SetDefaultPaymentMethod(artifact.DefaultPaymentMethodUdi?.Guid);
+
+                        if (artifact.DefaultShippingMethodUdi != null)
+                        {
+                            artifact.DefaultShippingMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
+                            // TODO: Check the payment method exists?
+                        }
+
+                        entity.SetDefaultShippingMethod(artifact.DefaultShippingMethodUdi?.Guid);
+
+                        _umbracoCommerceApi.SaveRegion(entity);
+                    }
+
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
     }
 }

@@ -4,15 +4,8 @@ using System;
 
 namespace Umbraco.Commerce.Deploy.Configuration
 {
-    public class UmbracoCommerceDeploySettingsAccessor
+    public class UmbracoCommerceDeploySettingsAccessor(IServiceProvider serviceProvider)
     {
-        private readonly IServiceProvider _serviceProvider;
-
-        public UmbracoCommerceDeploySettingsAccessor(IServiceProvider serviceProvider)
-        {
-            _serviceProvider = serviceProvider;
-        }
-
-        public UmbracoCommerceDeploySettings Settings => _serviceProvider.GetRequiredService<IOptions<UmbracoCommerceDeploySettings>>().Value;
+        public UmbracoCommerceDeploySettings Settings => serviceProvider.GetRequiredService<IOptions<UmbracoCommerceDeploySettings>>().Value;
     }
 }

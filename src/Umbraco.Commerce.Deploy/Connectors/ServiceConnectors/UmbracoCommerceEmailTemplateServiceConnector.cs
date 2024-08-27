@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
@@ -12,19 +15,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.EmailTemplate, UdiType.GuidUdi)]
     public class UmbracoCommerceEmailTemplateServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<EmailTemplateArtifact, EmailTemplateReadOnly, EmailTemplate, EmailTemplateState>
     {
-        public override int[] ProcessPasses => new[]
+        protected override int[] ProcessPasses => new[]
         {
             2
         };
 
-        public override string[] ValidOpenSelectors => new[]
+        protected override string[] ValidOpenSelectors => new[]
         {
             "this",
             "this-and-descendants",
             "descendants"
         };
 
-        public override string AllEntitiesRangeName => "All Umbraco Commerce Email Templates";
+        protected override string OpenUdiName => "All Umbraco Commerce Email Templates";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.EmailTemplate;
 
@@ -35,25 +38,27 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override string GetEntityName(EmailTemplateReadOnly entity)
             => entity.Name;
 
-        public override EmailTemplateReadOnly GetEntity(Guid id)
-            => _umbracoCommerceApi.GetEmailTemplate(id);
+        public override Task<EmailTemplateReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult((EmailTemplateReadOnly?)_umbracoCommerceApi.GetEmailTemplate(id));
 
-        public override IEnumerable<EmailTemplateReadOnly> GetEntities(Guid storeId)
-            => _umbracoCommerceApi.GetEmailTemplates(storeId);
+        public override IAsyncEnumerable<EmailTemplateReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetEmailTemplates(storeId).ToAsyncEnumerable();
 
-        public override EmailTemplateArtifact GetArtifact(GuidUdi udi, EmailTemplateReadOnly entity)
+        public override Task<EmailTemplateArtifact?> GetArtifactAsync(GuidUdi? udi, EmailTemplateReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
-                return null;
+            {
+                return Task.FromResult<EmailTemplateArtifact?>(null);
+            }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
 
             var dependencies = new ArtifactDependencyCollection
             {
-                new UmbracoCommerceArtifactDependency(storeUdi)
+                new UmbracoCommerceArtifactDependency(storeUdi),
             };
 
-            return new EmailTemplateArtifact(udi, storeUdi, dependencies)
+            return Task.FromResult<EmailTemplateArtifact?>(new EmailTemplateArtifact(udi, storeUdi, dependencies)
             {
                 Name = entity.Name,
                 Alias = entity.Alias,
@@ -67,49 +72,56 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 SendToCustomer = entity.SendToCustomer,
                 TemplateView = entity.TemplateView,
                 SortOrder = entity.SortOrder
-            };
+            });
         }
 
-        public override void Process(ArtifactDeployState<EmailTemplateArtifact, EmailTemplateReadOnly> state, IDeployContext context, int pass)
+        public override async Task ProcessAsync(ArtifactDeployState<EmailTemplateArtifact, EmailTemplateReadOnly> state, IDeployContext context, int pass, CancellationToken cancellationToken = default)
         {
-            state.NextPass = GetNextPass(ProcessPasses, pass);
+            state.NextPass = GetNextPass(pass);
 
             switch (pass)
             {
                 case 2:
-                    Pass2(state, context);
+                    await Pass2Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(pass));
             }
         }
 
-        private void Pass2(ArtifactDeployState<EmailTemplateArtifact, EmailTemplateReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
+        private Task Pass2Async(ArtifactDeployState<EmailTemplateArtifact, EmailTemplateReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
+                {
+                    EmailTemplateArtifact artifact = state.Artifact;
 
-                artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
-                artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
+                    artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
+                    artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                var entity = state.Entity?.AsWritable(uow) ?? EmailTemplate.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name);
+                    EmailTemplate? entity = state.Entity?.AsWritable(uow) ?? EmailTemplate.Create(
+                        uow,
+                        artifact.Udi.Guid,
+                        artifact.StoreUdi.Guid,
+                        artifact.Alias,
+                        artifact.Name);
 
-                entity.SetName(artifact.Name, artifact.Alias)
-                    .SetCategory((TemplateCategory)artifact.Category)
-                    .SetSendToCustomer(artifact.SendToCustomer)
-                    .SetSubject(artifact.Subject)
-                    .SetSender(artifact.SenderName, artifact.SenderAddress)
-                    .SetToAddresses(artifact.ToAddresses)
-                    .SetCcAddresses(artifact.CcAddresses)
-                    .SetBccAddresses(artifact.BccAddresses)
-                    .SetTemplateView(artifact.TemplateView)
-                    .SetSortOrder(artifact.SortOrder);
+                    entity.SetName(artifact.Name, artifact.Alias)
+                        .SetCategory((TemplateCategory)artifact.Category)
+                        .SetSendToCustomer(artifact.SendToCustomer)
+                        .SetSubject(artifact.Subject)
+                        .SetSender(artifact.SenderName, artifact.SenderAddress)
+                        .SetToAddresses(artifact.ToAddresses)
+                        .SetCcAddresses(artifact.CcAddresses)
+                        .SetBccAddresses(artifact.BccAddresses)
+                        .SetTemplateView(artifact.TemplateView)
+                        .SetSortOrder(artifact.SortOrder);
 
-                _umbracoCommerceApi.SaveEmailTemplate(entity);
+                    _umbracoCommerceApi.SaveEmailTemplate(entity);
 
-                uow.Complete();
-            });
-        }
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
     }
 }

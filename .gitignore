@@ -60,7 +60,6 @@ BenchmarkDotNet.Artifacts/
 # .NET
 project.lock.json
 project.fragment.lock.json
-artifacts/
 
 # Tye
 .tye/
@@ -479,3 +478,4 @@ $RECYCLE.BIN/
 ##
 ## Umbraco Commerce specific
 ##
+.idea

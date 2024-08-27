@@ -1,43 +1,52 @@
-﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Options;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Deploy.Configuration;
-
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Cms.Core.Models;
+using Umbraco.Cms.Core.Serialization;
+using Umbraco.Commerce.Core.Models;
+using Umbraco.Deploy.Core;
+using Umbraco.Deploy.Core.Connectors.ValueConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
-    public class UmbracoCommercePriceValueConnector : IValueConnector
+    public class UmbracoCommercePriceValueConnector(
+        IUmbracoCommerceApi umbracoCommerceApi,
+        IJsonSerializer jsonSerializer)
+        : ValueConnectorBase
     {
-        private readonly IUmbracoCommerceApi _umbracoCommerceApi;
-        private readonly UmbracoCommerceDeploySettingsAccessor _settingsAccessor;
+        public override IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.Price" };
 
-        public IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.Price" };
-
-        public UmbracoCommercePriceValueConnector(IUmbracoCommerceApi umbracoCommerceApi, UmbracoCommerceDeploySettingsAccessor settingsAccessor)
-        {
-            _umbracoCommerceApi = umbracoCommerceApi;
-            _settingsAccessor = settingsAccessor;
-        }
-
-        public string ToArtifact(object value, IPropertyType propertyType, ICollection<ArtifactDependency> dependencies)
+        public override async Task<string?> ToArtifactAsync(
+            object? value,
+            IPropertyType propertyType,
+            ICollection<ArtifactDependency> dependencies,
+            IContextCache contextCache,
+            CancellationToken cancellationToken = default)
         {
             var svalue = value as string;
 
             if (string.IsNullOrWhiteSpace(svalue))
+            {
                 return null;
+            }
 
-            var srcDict = JsonConvert.DeserializeObject<Dictionary<Guid, decimal?>>(svalue);
-            var dstDict = new Dictionary<GuidUdi, decimal?>();
+            Dictionary<Guid, decimal?>? srcDict = jsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue);
 
-            foreach (var kvp in srcDict)
+            var dstDict = new Dictionary<string, decimal?>();
+
+            foreach (KeyValuePair<Guid, decimal?> kvp in srcDict)
             {
                 var udi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, kvp.Key);
 
-                // Because we store Guid IDs anyway we don't neceserily need to fetch
+                // Because we store Guid IDs anyway we don't necessarily need to fetch
                 // the Currency entity to look anything up, it's mostly a question
                 // of whether we want to validate the Currency exists. I'm not sure
                 // whether this should really be the responsibility of the property editor
@@ -46,27 +55,37 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
                 dependencies.Add(new UmbracoCommerceArtifactDependency(udi, ArtifactDependencyMode.Exist));
 
-                dstDict.Add(udi, kvp.Value);
+                dstDict.Add(udi.ToString(), kvp.Value);
             }
 
-            return JsonConvert.SerializeObject(dstDict);
+            return jsonSerializer.Serialize(dstDict);
         }
 
-        public object FromArtifact(string value, IPropertyType propertyType, object currentValue)
+
+
+        public override async Task<object?> FromArtifactAsync(
+            string? value,
+            IPropertyType propertyType,
+            object? currentValue,
+            IContextCache contextCache,
+            CancellationToken cancellationToken = default)
         {
             var svalue = value as string;
 
             if (string.IsNullOrWhiteSpace(svalue))
+            {
                 return null;
+            }
 
-            var srcDict = JsonConvert.DeserializeObject<Dictionary<string, decimal?>>(svalue);
+            Dictionary<string, decimal?>? srcDict = jsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue);
+
             var dstDict = new Dictionary<Guid, decimal?>();
 
-            foreach (var kvp in srcDict)
+            foreach (KeyValuePair<string, decimal?> kvp in srcDict)
             {
-                if (UdiHelper.TryParseGuidUdi(kvp.Key, out var udi) && udi.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
+                if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) && udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
                 {
-                    var currencyEntity = _umbracoCommerceApi.GetCurrency(udi.Guid);
+                    CurrencyReadOnly? currencyEntity = umbracoCommerceApi.GetCurrency(udi.Guid);
                     if (currencyEntity != null)
                     {
                         dstDict.Add(currencyEntity.Id, kvp.Value);
@@ -74,7 +93,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 }
             }
 
-            return JsonConvert.SerializeObject(dstDict);
+            return jsonSerializer.Serialize(dstDict);
         }
     }
 }

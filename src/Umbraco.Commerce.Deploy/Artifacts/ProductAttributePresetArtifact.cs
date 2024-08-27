@@ -4,12 +4,12 @@ using Umbraco.Cms.Core.Deploy;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
 {
-    public class ProductAttributePresetArtifact : StoreEntityArtifactBase
+    public class ProductAttributePresetArtifact(
+        GuidUdi? udi,
+        GuidUdi storeUdi,
+        IEnumerable<ArtifactDependency> dependencies = null)
+        : StoreEntityArtifactBase(udi, storeUdi, dependencies)
     {
-        public ProductAttributePresetArtifact(GuidUdi udi, GuidUdi storeUdi, IEnumerable<ArtifactDependency> dependencies = null)
-            : base(udi, storeUdi, dependencies)
-        { }
-
         public string Code { get; set; }
 
         public new string Alias

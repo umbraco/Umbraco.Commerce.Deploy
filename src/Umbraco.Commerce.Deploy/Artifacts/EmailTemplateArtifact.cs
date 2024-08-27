@@ -4,12 +4,12 @@ using Umbraco.Cms.Core.Deploy;
 
 namespace Umbraco.Commerce.Deploy.Artifacts
 {
-    public class EmailTemplateArtifact : StoreEntityArtifactBase
+    public class EmailTemplateArtifact(
+        GuidUdi? udi,
+        GuidUdi storeUdi,
+        IEnumerable<ArtifactDependency> dependencies = null)
+        : StoreEntityArtifactBase(udi, storeUdi, dependencies)
     {
-        public EmailTemplateArtifact(GuidUdi udi, GuidUdi storeUdi, IEnumerable<ArtifactDependency> dependencies = null)
-            : base(udi, storeUdi, dependencies)
-        { }
-
         public int Category { get; set; }
 
         public bool SendToCustomer { get; set; }

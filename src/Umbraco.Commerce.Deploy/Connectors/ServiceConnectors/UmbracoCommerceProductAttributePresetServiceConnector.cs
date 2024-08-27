@@ -8,6 +8,8 @@ using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Umbraco.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
@@ -15,19 +17,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset, UdiType.GuidUdi)]
     public class UmbracoCommerceProductAttributePresetServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ProductAttributePresetArtifact, ProductAttributePresetReadOnly, ProductAttributePreset, ProductAttributePresetState>
     {
-        public override int[] ProcessPasses => new[]
+        protected override int[] ProcessPasses => new[]
         {
             2,4
         };
 
-        public override string[] ValidOpenSelectors => new[]
+        protected override string[] ValidOpenSelectors => new[]
         {
             "this",
             "this-and-descendants",
             "descendants"
         };
 
-        public override string AllEntitiesRangeName => "All global:: Product Attribute Presets";
+        protected override string OpenUdiName => "All global:: Product Attribute Presets";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset;
 
@@ -40,16 +42,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override string GetEntityName(ProductAttributePresetReadOnly entity)
             => entity.Name;
 
-        public override ProductAttributePresetReadOnly GetEntity(Guid id)
-            => _umbracoCommerceApi.GetProductAttributePreset(id);
+        public override Task<ProductAttributePresetReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult((ProductAttributePresetReadOnly?)_umbracoCommerceApi.GetProductAttributePreset(id));
 
-        public override IEnumerable<ProductAttributePresetReadOnly> GetEntities(Guid storeId)
-            => _umbracoCommerceApi.GetProductAttributePresets(storeId);
+        public override IAsyncEnumerable<ProductAttributePresetReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetProductAttributePresets(storeId).ToAsyncEnumerable();
 
-        public override ProductAttributePresetArtifact GetArtifact(GuidUdi udi, ProductAttributePresetReadOnly entity)
+        public override Task<ProductAttributePresetArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributePresetReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
-                return null;
+            {
+                return Task.FromResult<ProductAttributePresetArtifact?>(null);
+            }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
 
@@ -60,10 +64,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
             var allowedAttributes = new List<AllowedProductAttributeArtifact>();
 
-            foreach (var allowedAttr in entity.AllowedAttributes)
+            foreach (AllowedProductAttribute? allowedAttr in entity.AllowedAttributes)
             {
                 // Get product attribute ID
-                var attr = _umbracoCommerceApi.GetProductAttribute(entity.StoreId, allowedAttr.ProductAttributeAlias);
+                ProductAttributeReadOnly? attr = _umbracoCommerceApi.GetProductAttribute(entity.StoreId, allowedAttr.ProductAttributeAlias);
                 var attrUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.ProductAttribute, attr.Id);
 
                 // Add the product attribute as a dependency
@@ -87,79 +91,93 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 SortOrder = entity.SortOrder
             };
 
-            return artifact;
+            return Task.FromResult<ProductAttributePresetArtifact?>(artifact);
         }
 
-        public override void Process(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, int pass)
+        public override async Task ProcessAsync(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, int pass, CancellationToken cancellationToken = default)
         {
-            state.NextPass = GetNextPass(ProcessPasses, pass);
+            state.NextPass = GetNextPass(pass);
 
             switch (pass)
             {
                 case 2:
-                    Pass2(state, context);
+                    await Pass2Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 case 4:
-                    Pass4(state, context);
+                    await Pass4Async(state, context, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(pass));
             }
         }
 
-        private void Pass2(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-
-                artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset);
-                artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
-
-                var entity = state.Entity?.AsWritable(uow) ?? ProductAttributePreset.Create(uow, artifact.Udi.Guid, artifact.StoreUdi.Guid, artifact.Alias, artifact.Name);
-
-                entity.SetAlias(artifact.Alias)
-                    .SetName(artifact.Name)
-                    .SetIcon(artifact.Icon)
-                    .SetDescription(artifact.Description)
-                    .SetSortOrder(artifact.SortOrder);
-
-                _umbracoCommerceApi.SaveProductAttributePreset(entity);
-
-                state.Entity = entity;
-
-                uow.Complete();
-            });
-        }
-
-        private void Pass4(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context)
-        {
-            _umbracoCommerceApi.Uow.Execute(uow =>
-            {
-                var artifact = state.Artifact;
-                var entity = _umbracoCommerceApi.GetProductAttributePreset(state.Entity.Id).AsWritable(uow);
-
-                var productAttributeAliasMap = _umbracoCommerceApi.GetProductAttributes(artifact.AllowedAttributes.Select(x => x.ProductAttributeUdi.Guid).ToArray())
-                    .ToDictionary(x => x.Id, x => x);
-
-                var allowedAttributes = new List<AllowedProductAttribute>();
-
-                foreach (var allowedAttr in artifact.AllowedAttributes.Where(x => productAttributeAliasMap.ContainsKey(x.ProductAttributeUdi.Guid)))
+        private Task Pass2Async(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
                 {
-                    var attr = productAttributeAliasMap[allowedAttr.ProductAttributeUdi.Guid];
+                    ProductAttributePresetArtifact artifact = state.Artifact;
 
-                    allowedAttributes.Add(new AllowedProductAttribute(attr.Alias, 
-                        allowedAttr.AllowedValueAliases
-                            .Where(x => attr.Values.Any(y => y.Alias.InvariantEquals(x)))
-                            .ToList()));
-                }
+                    artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset);
+                    artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                entity.SetAllowedAttributes(allowedAttributes, SetBehavior.Replace);
+                    ProductAttributePreset? entity = state.Entity?.AsWritable(uow) ?? ProductAttributePreset.Create(
+                        uow,
+                        artifact.Udi.Guid,
+                        artifact.StoreUdi.Guid,
+                        artifact.Alias,
+                        artifact.Name);
 
-                _umbracoCommerceApi.SaveProductAttributePreset(entity);
+                    entity.SetAlias(artifact.Alias)
+                        .SetName(artifact.Name)
+                        .SetIcon(artifact.Icon)
+                        .SetDescription(artifact.Description)
+                        .SetSortOrder(artifact.SortOrder);
 
-                uow.Complete();
-            });
-        }
+                    _umbracoCommerceApi.SaveProductAttributePreset(entity);
+
+                    state.Entity = entity;
+
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
+
+        private Task Pass4Async(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            _umbracoCommerceApi.Uow.ExecuteAsync(
+                (uow, ct) =>
+                {
+                    ProductAttributePresetArtifact artifact = state.Artifact;
+
+                    if (state.Entity != null)
+                    {
+                        ProductAttributePreset? entity = _umbracoCommerceApi.GetProductAttributePreset(state.Entity.Id).AsWritable(uow);
+
+                        var productAttributeAliasMap = _umbracoCommerceApi.GetProductAttributes(artifact.AllowedAttributes.Select(x => x.ProductAttributeUdi.Guid).ToArray())
+                            .ToDictionary(x => x.Id, x => x);
+
+                        var allowedAttributes = new List<AllowedProductAttribute>();
+
+                        foreach (AllowedProductAttributeArtifact allowedAttr in artifact.AllowedAttributes.Where(x => productAttributeAliasMap.ContainsKey(x.ProductAttributeUdi.Guid)))
+                        {
+                            ProductAttributeReadOnly? attr = productAttributeAliasMap[allowedAttr.ProductAttributeUdi.Guid];
+
+                            allowedAttributes.Add(new AllowedProductAttribute(
+                                attr.Alias,
+                                allowedAttr.AllowedValueAliases
+                                    .Where(x => attr.Values.Any(y => y.Alias.InvariantEquals(x)))
+                                    .ToList()));
+                        }
+
+                        entity.SetAllowedAttributes(allowedAttributes, SetBehavior.Replace);
+
+                        _umbracoCommerceApi.SaveProductAttributePreset(entity);
+                    }
+
+                    uow.Complete();
+
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
     }
 }
