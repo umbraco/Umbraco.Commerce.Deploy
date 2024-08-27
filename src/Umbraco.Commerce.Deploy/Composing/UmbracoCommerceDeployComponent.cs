@@ -44,6 +44,7 @@ namespace Umbraco.Commerce.Deploy.Composing
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.Region, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.Currency, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.TaxClass, UdiType.GuidUdi);
+            UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.PrintTemplate, UdiType.GuidUdi);
             UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate, UdiType.GuidUdi);
@@ -172,6 +173,7 @@ namespace Umbraco.Commerce.Deploy.Composing
             diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Region);
             diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.Currency);
             diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
+            diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod);
             diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
             diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.PrintTemplate);
             diskEntityService.RegisterDiskEntityType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate);
@@ -213,6 +215,10 @@ namespace Umbraco.Commerce.Deploy.Composing
             // TaxClass
             EventHub.NotificationEvents.OnTaxClassSaved((e) => WriteEntityArtifact(e.TaxClass));
             EventHub.NotificationEvents.OnTaxClassDeleted((e) => DeleteEntityArtifact(e.TaxClass));
+
+            // TaxCalculationMethod
+            EventHub.NotificationEvents.OnTaxCalculationMethodSaved((e) => WriteEntityArtifact(e.TaxCalculationMethod));
+            EventHub.NotificationEvents.OnTaxCalculationMethodDeleted((e) => DeleteEntityArtifact(e.TaxCalculationMethod));
 
             // EmailTemplate
             EventHub.NotificationEvents.OnEmailTemplateSaved((e) => WriteEntityArtifact(e.EmailTemplate));
