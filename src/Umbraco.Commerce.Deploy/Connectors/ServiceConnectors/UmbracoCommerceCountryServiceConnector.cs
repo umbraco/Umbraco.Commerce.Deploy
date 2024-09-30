@@ -178,7 +178,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         if (artifact.TaxCalculationMethodUdi != null)
                         {
                             artifact.TaxCalculationMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod);
-                            // TODO: Check the currency exists?
+                            // TODO: Check the tax calculation method exists?
                         }
 
                         entity.SetTaxCalculationMethod(artifact.TaxCalculationMethodUdi?.Guid);
