@@ -30,7 +30,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             "descendants"
         };
 
-        protected override string OpenUdiName => "All Umbraco Commerce Tax Classes";
+        protected override string OpenUdiName => "All Umbraco Commerce Tax Calculation Methods";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod;
 
