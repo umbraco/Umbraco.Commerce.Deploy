@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -74,7 +74,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 var allowedCountryArtifacts = new List<AllowedCountryArtifact>();
 
-                foreach (AllowedCountry? allowedCountry in entity.AllowedCountries)
+                foreach (AllowedCountry? allowedCountry in entity.AllowedCountries.OrderBy(x => x.CountryId))
                 {
                     var countryDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, allowedCountry.CountryId);
                     var countryDep = new UmbracoCommerceArtifactDependency(countryDepUdi);

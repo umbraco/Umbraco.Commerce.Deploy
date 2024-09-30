@@ -67,6 +67,17 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 SortOrder = entity.SortOrder
             };
 
+            // Tax calculation method
+            if (entity.TaxCalculationMethodId != null)
+            {
+                var taxCalculationMethodDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod, entity.TaxCalculationMethodId.Value);
+                var taxCalculationMethodDep = new UmbracoCommerceArtifactDependency(taxCalculationMethodDepUdi);
+
+                dependencies.Add(taxCalculationMethodDep);
+
+                artifact.TaxCalculationMethodUdi = taxCalculationMethodDepUdi;
+            }
+
             // Default currency
             if (entity.DefaultCurrencyId != null)
             {
@@ -163,6 +174,14 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     if (state.Entity != null)
                     {
                         Country? entity = _umbracoCommerceApi.GetCountry(state.Entity.Id).AsWritable(uow);
+
+                        if (artifact.TaxCalculationMethodUdi != null)
+                        {
+                            artifact.TaxCalculationMethodUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod);
+                            // TODO: Check the tax calculation method exists?
+                        }
+
+                        entity.SetTaxCalculationMethod(artifact.TaxCalculationMethodUdi?.Guid);
 
                         if (artifact.DefaultCurrencyUdi != null)
                         {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -64,28 +64,30 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 Name = entity.Name,
                 Alias = entity.Alias,
                 DefaultTaxRate = entity.DefaultTaxRate,
+                DefaultTaxCode = entity.DefaultTaxCode,
                 SortOrder = entity.SortOrder
             };
 
             // Country region tax rates
-            var countryRegionTaxRateArtifacts = new List<CountryRegionTaxRateArtifact>();
+            var countryRegionTaxRateArtifacts = new List<CountryRegionTaxClassArtifact>();
 
-            foreach (var countryRegionTaxRate in entity.CountryRegionTaxRates)
+            foreach (var countryRegionTaxClass in entity.CountryRegionTaxClasses.OrderBy(x => x.CountryId).ThenBy(x => x.RegionId))
             {
-                var crtrArtifact = new CountryRegionTaxRateArtifact
+                var crtrArtifact = new CountryRegionTaxClassArtifact
                 {
-                    TaxRate = countryRegionTaxRate.TaxRate
+                    TaxRate = countryRegionTaxClass.TaxRate,
+                    TaxCode = countryRegionTaxClass.TaxCode
                 };
 
-                var countryDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, countryRegionTaxRate.CountryId);
+                var countryDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, countryRegionTaxClass.CountryId);
                 var countryDep = new UmbracoCommerceArtifactDependency(countryDepUdi);
                 dependencies.Add(countryDep);
 
                 crtrArtifact.CountryUdi = countryDepUdi;
 
-                if (countryRegionTaxRate.RegionId.HasValue)
+                if (countryRegionTaxClass.RegionId.HasValue)
                 {
-                    var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, countryRegionTaxRate.CountryId);
+                    var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, countryRegionTaxClass.CountryId);
                     var regionDep = new UmbracoCommerceArtifactDependency(regionDepUdi);
                     dependencies.Add(regionDep);
 
@@ -95,7 +97,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 countryRegionTaxRateArtifacts.Add(crtrArtifact);
             }
 
-            artifact.CountryRegionTaxRates = countryRegionTaxRateArtifacts;
+            artifact.CountryRegionTaxClasses = countryRegionTaxRateArtifacts;
 
             return Task.FromResult<TaxClassArtifact?>(artifact);
         }
@@ -136,6 +138,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     entity.SetName(artifact.Name, artifact.Alias)
                         .SetDefaultTaxRate(artifact.DefaultTaxRate)
+                        .SetDefaultTaxCode(artifact.DefaultTaxCode)
                         .SetSortOrder(artifact.SortOrder);
 
                     _umbracoCommerceApi.SaveTaxClass(entity);
@@ -161,38 +164,38 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         // Should probably validate the entity type here too, but really
                         // given we are using guids, the likelyhood of a matching guid
                         // being for a different entity type are pretty slim
-                        var countryRegionTaxRatesToRemove = entity.CountryRegionTaxRates
-                            .Where(x => artifact.CountryRegionTaxRates == null || !artifact.CountryRegionTaxRates.Any(y => y.CountryUdi.Guid == x.CountryId && y.RegionUdi?.Guid == x.RegionId))
+                        var countryRegionTaxClassesToRemove = entity.CountryRegionTaxClasses
+                            .Where(x => artifact.CountryRegionTaxClasses == null || !artifact.CountryRegionTaxClasses.Any(y => y.CountryUdi.Guid == x.CountryId && y.RegionUdi?.Guid == x.RegionId))
                             .ToList();
 
-                        if (artifact.CountryRegionTaxRates != null)
+                        if (artifact.CountryRegionTaxClasses != null)
                         {
-                            foreach (CountryRegionTaxRateArtifact crtr in artifact.CountryRegionTaxRates)
+                            foreach (CountryRegionTaxClassArtifact crtr in artifact.CountryRegionTaxClasses)
                             {
                                 crtr.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
                                 if (crtr.RegionUdi == null)
                                 {
-                                    entity.SetCountryTaxRate(crtr.CountryUdi.Guid, crtr.TaxRate);
+                                    entity.SetCountryTaxClass(crtr.CountryUdi.Guid, crtr.TaxRate, crtr.TaxCode);
                                 }
                                 else
                                 {
                                     crtr.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
 
-                                    entity.SetRegionTaxRate(crtr.CountryUdi.Guid, crtr.RegionUdi.Guid, crtr.TaxRate);
+                                    entity.SetRegionTaxClass(crtr.CountryUdi.Guid, crtr.RegionUdi.Guid, crtr.TaxRate, crtr.TaxCode);
                                 }
                             }
                         }
 
-                        foreach (CountryRegionTaxRate? crtr in countryRegionTaxRatesToRemove)
+                        foreach (CountryRegionTaxClass? crtr in countryRegionTaxClassesToRemove)
                         {
                             if (crtr.RegionId == null)
                             {
-                                entity.ClearCountryTaxRate(crtr.CountryId);
+                                entity.ClearCountryTaxClass(crtr.CountryId);
                             }
                             else
                             {
-                                entity.ClearRegionTaxRate(crtr.CountryId, crtr.RegionId.Value);
+                                entity.ClearRegionTaxClass(crtr.CountryId, crtr.RegionId.Value);
                             }
                         }
 

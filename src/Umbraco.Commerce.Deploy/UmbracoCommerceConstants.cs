@@ -22,6 +22,8 @@ namespace Umbraco.Commerce.Deploy
 
             public const string TaxClass = "umbraco-commerce-tax-class";
 
+            public const string TaxCalculationMethod = "umbraco-commerce-tax-calculation-method";
+
             public const string EmailTemplate = "umbraco-commerce-email-template";
 
             public const string PrintTemplate = "umbraco-commerce-print-template";

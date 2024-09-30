@@ -157,7 +157,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 var allowedCountryRegions = new List<AllowedCountryRegionArtifact>();
 
-                foreach (var acr in entity.AllowedCountryRegions)
+                foreach (var acr in entity.AllowedCountryRegions.OrderBy(x => x.CountryId).ThenBy(x => x.RegionId))
                 {
                     var acrArtifact = new AllowedCountryRegionArtifact();
 

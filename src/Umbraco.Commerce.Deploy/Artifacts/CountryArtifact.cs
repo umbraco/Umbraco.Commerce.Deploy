@@ -14,6 +14,8 @@ namespace Umbraco.Commerce.Deploy.Artifacts
             get => Code;
         }
 
+
+        public GuidUdi? TaxCalculationMethodUdi { get; set; }
         public GuidUdi? DefaultCurrencyUdi { get; set; }
         public GuidUdi? DefaultPaymentMethodUdi { get; set; }
         public GuidUdi? DefaultShippingMethodUdi { get; set; }
