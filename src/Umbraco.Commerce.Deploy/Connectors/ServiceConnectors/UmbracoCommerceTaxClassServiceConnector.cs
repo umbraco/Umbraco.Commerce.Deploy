@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Umbraco.Commerce.Core.Api;
@@ -81,7 +81,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                 if (countryRegionTaxRate.RegionId.HasValue)
                 {
-                    var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, countryRegionTaxRate.CountryId);
+                    var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Region, countryRegionTaxRate.RegionId.Value);
                     var regionDep = new UmbracoCommerceArtifactDependency(regionDepUdi);
                     dependencies.Add(regionDep);
 
