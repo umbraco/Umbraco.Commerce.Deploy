@@ -9,6 +9,7 @@ using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -39,12 +40,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<CurrencyReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((CurrencyReadOnly?)_umbracoCommerceApi.GetCurrency(id));
+            => _umbracoCommerceApi.GetCurrencyAsync(id);
 
         public override IAsyncEnumerable<CurrencyReadOnly> GetEntitiesAsync(
             Guid storeId,
             CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetCurrencies(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetCurrenciesAsync(storeId).AsAsyncEnumerable();
 
         public override Task<CurrencyArtifact?> GetArtifactAsync(GuidUdi? udi, CurrencyReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -107,16 +108,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<CurrencyArtifact, CurrencyReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<CurrencyArtifact, CurrencyReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     CurrencyArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    Currency? entity = state.Entity?.AsWritable(uow) ?? Currency.Create(
+                    Currency? entity = await state.Entity?.AsWritableAsync(uow)! ?? await Currency.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
@@ -124,31 +125,29 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         artifact.Name,
                         artifact.CultureName);
 
-                    entity.SetName(artifact.Name)
-                        .SetCode(artifact.Code)
-                        .SetCulture(artifact.CultureName)
-                        .SetCustomFormatTemplate(artifact.FormatTemplate)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name)
+                        .SetCodeAsync(artifact.Code)
+                        .SetCultureAsync(artifact.CultureName)
+                        .SetCustomFormatTemplateAsync(artifact.FormatTemplate)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveCurrency(entity);
+                    await _umbracoCommerceApi.SaveCurrencyAsync(entity, ct);
 
                     state.Entity = entity;
 
-                    uow.Complete();
-
-                    return Task.CompletedTask;
+                    await uow.CompleteAsync();
                 },
                 cancellationToken);
 
-        private Task Pass4Async(ArtifactDeployState<CurrencyArtifact, CurrencyReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass4Async(ArtifactDeployState<CurrencyArtifact, CurrencyReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     CurrencyArtifact artifact = state.Artifact;
 
                     if (state.Entity != null)
                     {
-                        Currency? entity = _umbracoCommerceApi.GetCurrency(state.Entity.Id).AsWritable(uow);
+                        Currency? entity = await _umbracoCommerceApi.GetCurrencyAsync(state.Entity.Id).AsWritableAsync(uow);
 
                         var allowedCountriesToRemove = entity.AllowedCountries
                             .Where(x => artifact.AllowedCountries == null || artifact.AllowedCountries.All(y => y.CountryUdi.Guid != x.CountryId))
@@ -160,21 +159,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             {
                                 ac.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
-                                entity.AllowInCountry(ac.CountryUdi.Guid);
+                                await entity.AllowInCountryAsync(ac.CountryUdi.Guid);
                             }
                         }
 
                         foreach (AllowedCountry? ac in allowedCountriesToRemove)
                         {
-                            entity.DisallowInCountry(ac.CountryId);
+                            await entity.DisallowInCountryAsync(ac.CountryId);
                         }
 
-                        _umbracoCommerceApi.SaveCurrency(entity);
+                        await _umbracoCommerceApi.SaveCurrencyAsync(entity, ct);
                     }
 
-                    uow.Complete();
-
-                    return Task.CompletedTask;
+                    await uow.CompleteAsync();
                 },
                 cancellationToken);
     }

@@ -4,13 +4,12 @@ using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
-
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Umbraco.Extensions;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -43,16 +42,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<ProductAttributePresetReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((ProductAttributePresetReadOnly?)_umbracoCommerceApi.GetProductAttributePreset(id));
+            => _umbracoCommerceApi.GetProductAttributePresetAsync(id);
 
         public override IAsyncEnumerable<ProductAttributePresetReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetProductAttributePresets(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetProductAttributePresetsAsync(storeId).AsAsyncEnumerable();
 
-        public override Task<ProductAttributePresetArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributePresetReadOnly? entity, CancellationToken cancellationToken = default)
+        public override async Task<ProductAttributePresetArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributePresetReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
             {
-                return Task.FromResult<ProductAttributePresetArtifact?>(null);
+                return null;
             }
 
             var storeUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Store, entity.StoreId);
@@ -67,7 +66,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             foreach (AllowedProductAttribute? allowedAttr in entity.AllowedAttributes)
             {
                 // Get product attribute ID
-                ProductAttributeReadOnly? attr = _umbracoCommerceApi.GetProductAttribute(entity.StoreId, allowedAttr.ProductAttributeAlias);
+                ProductAttributeReadOnly? attr = await _umbracoCommerceApi.GetProductAttributeAsync(entity.StoreId, allowedAttr.ProductAttributeAlias);
                 var attrUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.ProductAttribute, attr.Id);
 
                 // Add the product attribute as a dependency
@@ -81,7 +80,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 });
             }
 
-            var artifact = new ProductAttributePresetArtifact(udi, storeUdi, dependencies)
+            return new ProductAttributePresetArtifact(udi, storeUdi, dependencies)
             {
                 Name = entity.Name,
                 Code = entity.Alias,
@@ -90,8 +89,6 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 AllowedAttributes = allowedAttributes,
                 SortOrder = entity.SortOrder
             };
-
-            return Task.FromResult<ProductAttributePresetArtifact?>(artifact);
         }
 
         public override async Task ProcessAsync(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, int pass, CancellationToken cancellationToken = default)
@@ -111,49 +108,47 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     ProductAttributePresetArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    ProductAttributePreset? entity = state.Entity?.AsWritable(uow) ?? ProductAttributePreset.Create(
+                    ProductAttributePreset? entity = await state.Entity?.AsWritableAsync(uow)! ?? await ProductAttributePreset.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
                         artifact.Alias,
                         artifact.Name);
 
-                    entity.SetAlias(artifact.Alias)
-                        .SetName(artifact.Name)
-                        .SetIcon(artifact.Icon)
-                        .SetDescription(artifact.Description)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetAliasAsync(artifact.Alias)
+                        .SetNameAsync(artifact.Name)
+                        .SetIconAsync(artifact.Icon)
+                        .SetDescriptionAsync(artifact.Description)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveProductAttributePreset(entity);
+                    await _umbracoCommerceApi.SaveProductAttributePresetAsync(entity, ct);
 
                     state.Entity = entity;
 
-                    uow.Complete();
-
-                    return Task.CompletedTask;
+                    await uow.CompleteAsync();
                 },
                 cancellationToken);
 
-        private Task Pass4Async(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass4Async(ArtifactDeployState<ProductAttributePresetArtifact, ProductAttributePresetReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     ProductAttributePresetArtifact artifact = state.Artifact;
 
                     if (state.Entity != null)
                     {
-                        ProductAttributePreset? entity = _umbracoCommerceApi.GetProductAttributePreset(state.Entity.Id).AsWritable(uow);
+                        ProductAttributePreset? entity = await _umbracoCommerceApi.GetProductAttributePresetAsync(state.Entity.Id).AsWritableAsync(uow);
 
-                        var productAttributeAliasMap = _umbracoCommerceApi.GetProductAttributes(artifact.AllowedAttributes.Select(x => x.ProductAttributeUdi.Guid).ToArray())
+                        var productAttributeAliasMap = (await _umbracoCommerceApi.GetProductAttributesAsync(artifact.AllowedAttributes.Select(x => x.ProductAttributeUdi.Guid).ToArray()))
                             .ToDictionary(x => x.Id, x => x);
 
                         var allowedAttributes = new List<AllowedProductAttribute>();
@@ -165,18 +160,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             allowedAttributes.Add(new AllowedProductAttribute(
                                 attr.Alias,
                                 allowedAttr.AllowedValueAliases
-                                    .Where(x => attr.Values.Any(y => y.Alias.InvariantEquals(x)))
+                                    .Where(x => attr.Values.Any(y => y.Alias.Equals(x, StringComparison.OrdinalIgnoreCase)))
                                     .ToList()));
                         }
 
-                        entity.SetAllowedAttributes(allowedAttributes, SetBehavior.Replace);
+                        await entity.SetAllowedAttributesAsync(allowedAttributes, SetBehavior.Replace);
 
-                        _umbracoCommerceApi.SaveProductAttributePreset(entity);
+                        await _umbracoCommerceApi.SaveProductAttributePresetAsync(entity, ct);
                     }
 
-                    uow.Complete();
-
-                    return Task.CompletedTask;
+                    await uow.CompleteAsync();
                 },
                 cancellationToken);
     }

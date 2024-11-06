@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Umbraco.Commerce.Core.Api;
@@ -21,8 +20,8 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override async IAsyncEnumerable<TEntityReadOnly> GetEntitiesAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            IAsyncEnumerable<StoreReadOnly> stores = _umbracoCommerceApi.GetStores()
-                .ToAsyncEnumerable();
+            IAsyncEnumerable<StoreReadOnly> stores = _umbracoCommerceApi.GetStoresAsync()
+                .AsAsyncEnumerable();
 
             await foreach (StoreReadOnly store in stores)
             {

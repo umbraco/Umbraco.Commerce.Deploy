@@ -77,66 +77,69 @@ namespace Umbraco.Commerce.Deploy.Composing
                     [
                         Cms.Constants.Trees.Stores.NodeType.ProductAttributes,
                         Cms.Constants.Trees.Stores.NodeType.ProductAttribute
-                    ]),
-                (string nodeId, HttpContext httpContext, out Guid entityId) =>
-                {
-                    if (Guid.TryParse(nodeId, out entityId))
-                    {
-                        return true;
-                    }
-                    else if (int.TryParse(nodeId, out int id) && id == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributes])
-                    {
-                        entityId = Guid.Empty;
-                        return true;
-                    }
-                    else
-                    {
-                        entityId = Guid.Empty;
-                        return false;
-                    }
-                });
+                    ])
+            );
+                // (string nodeId, HttpContext httpContext, out Guid entityId) =>
+                // {
+                //     if (Guid.TryParse(nodeId, out entityId))
+                //     {
+                //         return true;
+                //     }
+                //     else if (int.TryParse(nodeId, out int id) && id == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributes])
+                //     {
+                //         entityId = Guid.Empty;
+                //         return true;
+                //     }
+                //     else
+                //     {
+                //         entityId = Guid.Empty;
+                //         return false;
+                //     }
+                // });
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
 
-            transferEntityService.RegisterTransferEntityType<ProductAttributePresetReadOnly>(
-                "uc:product-attribute-presets",
-                "Product Attribute Presets",
-                new DeployRegisteredEntityTypeDetailOptions
-                {
-                    SupportsQueueForTransfer = true,
-                    //SupportsQueueForTransferOfDescendents = true,
-                    SupportsRestore = true,
-                    PermittedToRestore = true,
-                    SupportsPartialRestore = true,
-                    SupportsImportExport = true,
-                    //SupportsExportOfDescendants = true
-                },
-                false,
-                "commerce",
-                (string routePath, HttpContext httpContext) => MatchesRoutePath(routePath, "productattributepreset"),
-                (string nodeId, HttpContext httpContext) => MatchesNodeId(
-                    nodeId,
-                    httpContext,
-                    [
-                        Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets,
-                        Cms.Constants.Trees.Stores.NodeType.ProductAttributePreset
-                    ]),
-                (string nodeId, HttpContext httpContext, out Guid entityId) =>
-                {
-                    if (Guid.TryParse(nodeId, out entityId))
+                transferEntityService.RegisterTransferEntityType<ProductAttributePresetReadOnly>(
+                    "uc:product-attribute-presets",
+                    "Product Attribute Presets",
+                    new DeployRegisteredEntityTypeDetailOptions
                     {
-                        return true;
-                    }
-                    else if (int.TryParse(nodeId, out int id) && id == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets])
-                    {
-                        entityId = Guid.Empty;
-                        return true;
-                    }
-                    else
-                    {
-                        entityId = Guid.Empty;
-                        return false;
-                    }
-                });
+                        SupportsQueueForTransfer = true,
+                        //SupportsQueueForTransferOfDescendents = true,
+                        SupportsRestore = true,
+                        PermittedToRestore = true,
+                        SupportsPartialRestore = true,
+                        SupportsImportExport = true,
+                        //SupportsExportOfDescendants = true
+                    },
+                    false,
+                    "commerce",
+                    (string routePath, HttpContext httpContext) =>
+                        MatchesRoutePath(routePath, "productattributepreset"),
+                    (string nodeId, HttpContext httpContext) => MatchesNodeId(
+                        nodeId,
+                        httpContext,
+                        [
+                            Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets,
+                            Cms.Constants.Trees.Stores.NodeType.ProductAttributePreset
+                        ])
+                );
+                // (string nodeId, HttpContext httpContext, out Guid entityId) =>
+                // {
+                //     if (Guid.TryParse(nodeId, out entityId))
+                //     {
+                //         return true;
+                //     }
+                //     else if (int.TryParse(nodeId, out int id) && id == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets])
+                //     {
+                //         entityId = Guid.Empty;
+                //         return true;
+                //     }
+                //     else
+                //     {
+                //         entityId = Guid.Empty;
+                //         return false;
+                //     }
+                // });
                 // TODO: , new DeployTransferRegisteredEntityTypeDetail.RemoteTreeDetail(FormsTreeHelper.GetExampleTree, "example", "externalExampleTree"));
         }
 

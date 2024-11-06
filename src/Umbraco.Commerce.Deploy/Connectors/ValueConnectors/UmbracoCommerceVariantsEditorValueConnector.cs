@@ -63,7 +63,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             {
                 foreach (var productAttributeAlias in productAttributeAliases)
                 {
-                    ProductAttributeReadOnly? productAttribute = umbracoCommerceApi.GetProductAttribute(storeValue.StoreId.Value, productAttributeAlias);
+                    ProductAttributeReadOnly? productAttribute = await umbracoCommerceApi.GetProductAttributeAsync(storeValue.StoreId.Value, productAttributeAlias);
                     if (productAttribute != null)
                     {
                         dependencies.Add(new UmbracoCommerceArtifactDependency(productAttribute.GetUdi()));
@@ -102,7 +102,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             {
                 return artifact;
             }
-            
+
             // The block grid json converter will strip any none expected properties so we need to
             // temporarily deserialize the artifact as a generic JsonObject and add the store id back in
             JsonObject? artifactJson = jsonSerializer.Deserialize<JsonObject>(artifact.ToString()!);
@@ -127,9 +127,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
         public class VariantsBlockEditorLayoutItem : IBlockLayoutItem
         {
+            [Obsolete("Use ContentKey instead. Will be removed in V18.")]
             public Udi? ContentUdi { get; set; }
 
+            [Obsolete("Use SettingsKey instead. Will be removed in V18.")]
             public Udi? SettingsUdi { get; set; }
+
+            public Guid ContentKey { get; set; }
+
+            public Guid? SettingsKey { get; set; }
             public ProductVariantConfig Config { get; set; }
         }
 

@@ -13,8 +13,7 @@ using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Deploy.Core;
-
-using StringExtensions = Umbraco.Commerce.Extensions.StringExtensions;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -48,10 +47,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<ShippingMethodReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((ShippingMethodReadOnly?)_umbracoCommerceApi.GetShippingMethod(id));
+            => _umbracoCommerceApi.GetShippingMethodAsync(id);
 
         public override IAsyncEnumerable<ShippingMethodReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetShippingMethods(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetShippingMethodsAsync(storeId).AsAsyncEnumerable();
 
         public override Task<ShippingMethodArtifact?> GetArtifactAsync(GuidUdi? udi, ShippingMethodReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -206,16 +205,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     ShippingMethodArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    ShippingMethod? entity = state.Entity?.AsWritable(uow) ?? ShippingMethod.Create(
+                    ShippingMethod? entity = await state.Entity?.AsWritableAsync(uow)! ?? await ShippingMethod.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
@@ -225,45 +224,43 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         (ShippingCalculationMode)artifact.CalculationMode);
 
                     var settings = artifact.ShippingProviderSettings
-                        .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
+                        .Where(x => !_settingsAccessor.Settings.ShippingMethods.IgnoreSettings.InvariantContains(x.Key)) // Ignore any settings that shouldn't be transfered
                         .ToDictionary(x => x.Key, x => x.Value);
 
-                    entity.SetName(artifact.Name, artifact.Alias)
-                        .SetSku(artifact.Sku)
-                        .SetImage(artifact.ImageId)
-                        .SetSettings(settings, SetBehavior.Merge)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetSkuAsync(artifact.Sku)
+                        .SetImageAsync(artifact.ImageId)
+                        .SetSettingsAsync(settings, SetBehavior.Merge)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveShippingMethod(entity);
+                    await _umbracoCommerceApi.SaveShippingMethodAsync(entity, ct);
 
                     state.Entity = entity;
 
-                    uow.Complete();
-
-                    return Task.CompletedTask;
+                    await uow.CompleteAsync();
                 },
                 cancellationToken);
 
-        private Task Pass4Async(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass4Async(ArtifactDeployState<ShippingMethodArtifact, ShippingMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     ShippingMethodArtifact artifact = state.Artifact;
 
                     if (state.Entity != null)
                     {
-                        ShippingMethod? entity = _umbracoCommerceApi.GetShippingMethod(state.Entity.Id).AsWritable(uow);
+                        ShippingMethod? entity = await _umbracoCommerceApi.GetShippingMethodAsync(state.Entity.Id).AsWritableAsync(uow);
 
                         // TaxClass
                         if (artifact.TaxClassUdi != null)
                         {
                             artifact.TaxClassUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
 
-                            entity.SetTaxClass(artifact.TaxClassUdi.Guid);
+                            await entity.SetTaxClassAsync(artifact.TaxClassUdi.Guid);
                         }
                         else
                         {
-                            entity.ClearTaxClass();
+                            await entity.ClearTaxClassAsync();
                         }
 
                         // AllowedCountryRegions
@@ -282,11 +279,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                                 {
                                     acr.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
 
-                                    entity.AllowInRegion(acr.CountryUdi.Guid, acr.RegionUdi.Guid);
+                                    await entity.AllowInRegionAsync(acr.CountryUdi.Guid, acr.RegionUdi.Guid);
                                 }
                                 else
                                 {
-                                    entity.AllowInCountry(acr.CountryUdi.Guid);
+                                    await entity.AllowInCountryAsync(acr.CountryUdi.Guid);
                                 }
                             }
                         }
@@ -295,11 +292,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             if (acr.RegionId != null)
                             {
-                                entity.DisallowInRegion(acr.CountryId, acr.RegionId.Value);
+                                await entity.DisallowInRegionAsync(acr.CountryId, acr.RegionId.Value);
                             }
                             else
                             {
-                                entity.DisallowInCountry(acr.CountryId);
+                                await entity.DisallowInCountryAsync(acr.CountryId);
                             }
                         }
 
@@ -330,15 +327,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                                     prices.Add(new ServicePrice(price.Value, price.CurrencyUdi.Guid, price.CountryUdi?.Guid, price.RegionUdi?.Guid));
                                 }
 
-                                entity.SetCalculationConfig(new FixedRateShippingCalculationConfig(prices));
+                                await entity.SetCalculationConfigAsync(new FixedRateShippingCalculationConfig(prices));
                             }
                             else if (artifact.CalculationMode == (int)ShippingCalculationMode.Dynamic)
                             {
-                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<DynamicRateShippingCalculationConfig>(_jsonSerializerOptions));
+                                await entity.SetCalculationConfigAsync(artifact.CalculationConfig?.Deserialize<DynamicRateShippingCalculationConfig>(_jsonSerializerOptions));
                             }
                             else if (artifact.CalculationMode == (int)ShippingCalculationMode.Realtime)
                             {
-                                entity.SetCalculationConfig(artifact.CalculationConfig?.Deserialize<RealtimeRateShippingCalculationConfig>(_jsonSerializerOptions));
+                                await entity.SetCalculationConfigAsync(artifact.CalculationConfig?.Deserialize<RealtimeRateShippingCalculationConfig>(_jsonSerializerOptions));
                             }
                             else
                             {
@@ -346,12 +343,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             }
                         }
 
-                        _umbracoCommerceApi.SaveShippingMethod(entity);
+                        await _umbracoCommerceApi.SaveShippingMethodAsync(entity, ct);
                     }
 
-                    uow.Complete();
-
-                    return Task.CompletedTask;
+                    await uow.CompleteAsync();
                 },
                 cancellationToken);
     }

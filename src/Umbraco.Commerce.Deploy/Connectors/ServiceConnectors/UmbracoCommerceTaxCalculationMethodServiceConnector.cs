@@ -7,11 +7,9 @@ using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
-
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
-
-using StringExtensions = Umbraco.Commerce.Extensions.StringExtensions;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -42,10 +40,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<TaxCalculationMethodReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((TaxCalculationMethodReadOnly?)_umbracoCommerceApi.GetTaxCalculationMethod(id));
+            => _umbracoCommerceApi.GetTaxCalculationMethodAsync(id);
 
         public override IAsyncEnumerable<TaxCalculationMethodReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetTaxCalculationMethods(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetTaxCalculationMethodsAsync(storeId).AsAsyncEnumerable();
 
         public override Task<TaxCalculationMethodArtifact?> GetArtifactAsync(GuidUdi? udi, TaxCalculationMethodReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -89,16 +87,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<TaxCalculationMethodArtifact, TaxCalculationMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<TaxCalculationMethodArtifact, TaxCalculationMethodReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     TaxCalculationMethodArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    TaxCalculationMethod? entity = state.Entity?.AsWritable(uow) ?? TaxCalculationMethod.Create(
+                    TaxCalculationMethod? entity = await state.Entity?.AsWritableAsync(uow)! ?? await TaxCalculationMethod.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
@@ -107,20 +105,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         artifact.SalesTaxProviderAlias);
 
                     var settings = artifact.SalesTaxProviderSettings
-                        .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.TaxCalculationMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transferred
+                        .Where(x => !_settingsAccessor.Settings.TaxCalculationMethods.IgnoreSettings.InvariantContains(x.Key)) // Ignore any settings that shouldn't be transferred
                         .ToDictionary(x => x.Key, x => x.Value);
 
-                    entity.SetName(artifact.Name, artifact.Alias)
-                        .SetSettings(settings, SetBehavior.Merge)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetSettingsAsync(settings, SetBehavior.Merge)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveTaxCalculationMethod(entity);
+                    await _umbracoCommerceApi.SaveTaxCalculationMethodAsync(entity, ct);
 
                     state.Entity = entity;
 
-                    uow.Complete();
-
-                    return Task.CompletedTask;
+                    await uow.CompleteAsync();
                 },
                 cancellationToken);
     }
