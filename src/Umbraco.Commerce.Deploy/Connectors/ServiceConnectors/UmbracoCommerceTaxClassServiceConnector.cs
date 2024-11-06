@@ -87,7 +87,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                 if (countryRegionTaxClass.RegionId.HasValue)
                 {
-                    var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Country, countryRegionTaxClass.CountryId);
+                    var regionDepUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Region, countryRegionTaxClass.RegionId.Value);
                     var regionDep = new UmbracoCommerceArtifactDependency(regionDepUdi);
                     dependencies.Add(regionDep);
 
