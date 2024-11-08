@@ -106,7 +106,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     await _umbracoCommerceApi.SavePrintTemplateAsync(entity, ct);
 
-                    await uow.CompleteAsync();
+                    uow.Complete();
                 },
                 cancellationToken);
     }

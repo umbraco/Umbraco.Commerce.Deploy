@@ -160,7 +160,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     state.Entity = entity;
 
-                    await uow.CompleteAsync();
+                    uow.Complete();
                 },
                 cancellationToken);
 
@@ -209,7 +209,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         await _umbracoCommerceApi.SaveCountryAsync(entity, ct);
                     }
 
-                    await uow.CompleteAsync();
+                    uow.Complete();
                 },
                 cancellationToken);
     }

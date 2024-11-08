@@ -110,7 +110,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     await _umbracoCommerceApi.SaveLocationAsync(entity, ct);
 
-                    await uow.CompleteAsync();
+                    uow.Complete();
                 },
                 cancellationToken);
     }

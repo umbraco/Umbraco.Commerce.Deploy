@@ -116,7 +116,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     state.Entity = entity;
 
-                    await uow.CompleteAsync();
+                    uow.Complete();
                 },
                 cancellationToken);
     }

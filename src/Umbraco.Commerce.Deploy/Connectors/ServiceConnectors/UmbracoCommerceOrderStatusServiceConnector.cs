@@ -103,7 +103,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     await _umbracoCommerceApi.SaveOrderStatusAsync(entity, ct);
 
-                    await uow.CompleteAsync();
+                    uow.Complete();
                 },
                 cancellationToken);
     }
