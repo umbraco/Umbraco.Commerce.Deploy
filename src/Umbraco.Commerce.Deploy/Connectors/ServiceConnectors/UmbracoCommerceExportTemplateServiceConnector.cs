@@ -94,7 +94,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    ExportTemplate? entity = await state.Entity?.AsWritableAsync(uow)! ?? await ExportTemplate.CreateAsync(
+                    ExportTemplate? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await ExportTemplate.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

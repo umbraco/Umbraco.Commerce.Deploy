@@ -96,7 +96,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    TaxCalculationMethod? entity = await state.Entity?.AsWritableAsync(uow)! ?? await TaxCalculationMethod.CreateAsync(
+                    TaxCalculationMethod? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await TaxCalculationMethod.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

@@ -117,7 +117,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    Currency? entity = await state.Entity?.AsWritableAsync(uow)! ?? await Currency.CreateAsync(
+                    Currency? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Currency.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

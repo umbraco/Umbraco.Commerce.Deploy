@@ -98,7 +98,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    EmailTemplate? entity = await state.Entity?.AsWritableAsync(uow)! ?? await EmailTemplate.CreateAsync(
+                    EmailTemplate? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await EmailTemplate.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

@@ -92,7 +92,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.PrintTemplate);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    PrintTemplate? entity = await state.Entity?.AsWritableAsync(uow)! ?? await PrintTemplate.CreateAsync(
+                    PrintTemplate? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await PrintTemplate.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

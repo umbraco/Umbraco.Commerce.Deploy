@@ -214,7 +214,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ShippingMethod);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    ShippingMethod? entity = await state.Entity?.AsWritableAsync(uow)! ?? await ShippingMethod.CreateAsync(
+                    ShippingMethod? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await ShippingMethod.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

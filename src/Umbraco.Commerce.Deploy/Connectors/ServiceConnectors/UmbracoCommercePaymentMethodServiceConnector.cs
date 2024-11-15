@@ -197,7 +197,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.PaymentMethod);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    PaymentMethod? entity = await state.Entity?.AsWritableAsync(uow)! ?? await PaymentMethod.CreateAsync(
+                    PaymentMethod? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await PaymentMethod.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

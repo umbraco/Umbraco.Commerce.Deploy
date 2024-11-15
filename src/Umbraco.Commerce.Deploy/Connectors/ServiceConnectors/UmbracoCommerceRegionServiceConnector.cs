@@ -119,7 +119,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
                     artifact.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
-                    Region? entity = await state.Entity?.AsWritableAsync(uow)! ?? await Region.CreateAsync(
+                    Region? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Region.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

@@ -90,7 +90,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.OrderStatus);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    OrderStatus? entity = await state.Entity?.AsWritableAsync(uow)! ?? await OrderStatus.CreateAsync(
+                    OrderStatus? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await OrderStatus.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,

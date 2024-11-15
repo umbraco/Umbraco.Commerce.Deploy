@@ -207,7 +207,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    Store? entity = await state.Entity?.AsWritableAsync(uow)! ?? await Store.CreateAsync(
+                    Store? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Store.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.Alias,
