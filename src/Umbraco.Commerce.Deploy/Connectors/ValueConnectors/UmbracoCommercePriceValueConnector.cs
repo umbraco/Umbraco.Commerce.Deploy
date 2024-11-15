@@ -76,14 +76,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             var dstDict = new Dictionary<Guid, decimal?>();
 
-            foreach (KeyValuePair<string, decimal?> kvp in srcDict)
+            if (srcDict != null)
             {
-                if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) && udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
+                foreach (KeyValuePair<string, decimal?> kvp in srcDict)
                 {
-                    CurrencyReadOnly? currencyEntity = await umbracoCommerceApi.GetCurrencyAsync(udi.Guid);
-                    if (currencyEntity != null)
+                    if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) &&
+                        udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
                     {
-                        dstDict.Add(currencyEntity.Id, kvp.Value);
+                        CurrencyReadOnly? currencyEntity = await umbracoCommerceApi.GetCurrencyAsync(udi.Guid);
+                        if (currencyEntity != null)
+                        {
+                            dstDict.Add(currencyEntity.Id, kvp.Value);
+                        }
                     }
                 }
             }
