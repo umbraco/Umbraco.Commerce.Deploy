@@ -10,7 +10,8 @@
     <GlobalPackageReference Include="Umbraco.JsonSchema.Extensions" Version="0.3.0" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <PackageVersion Include="Umbraco.Commerce.Cms.Startup" Version="[15.0.0-rc1, 16)" />
-    <PackageVersion Include="Umbraco.Deploy.Infrastructure" Version="[15.0.0, 16)" />
+    <PackageVersion Include="Umbraco.Commerce.Cms.Startup" Version="[15.0.0, 15.999.999)" />
+    <PackageVersion Include="Umbraco.Commerce.Persistance.Sqlite" Version="[15.0.0, 15.999.999)" />
+    <PackageVersion Include="Umbraco.Deploy.Infrastructure" Version="[15.0.1, 16)" />
   </ItemGroup>
 </Project>
