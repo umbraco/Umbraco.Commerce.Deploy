@@ -22,8 +22,8 @@ namespace Umbraco.Commerce.Deploy
                 ExportTemplateReadOnly exportTemplate => exportTemplate.GetUdi(),
                 DiscountReadOnly discount => discount.GetUdi(),
                 GiftCardReadOnly giftCard => giftCard.GetUdi(),
-                ProductAttributeReadOnly productAtrtibtue => productAtrtibtue.GetUdi(),
-                ProductAttributePresetReadOnly productAtrtibtuePreset => productAtrtibtuePreset.GetUdi(),
+                ProductAttributeReadOnly productAttribute => productAttribute.GetUdi(),
+                ProductAttributePresetReadOnly productAttributePreset => productAttributePreset.GetUdi(),
                 _ => null
             };
 
