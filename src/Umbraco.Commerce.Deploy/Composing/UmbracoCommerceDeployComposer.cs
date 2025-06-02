@@ -21,7 +21,7 @@ namespace Umbraco.Commerce.Deploy.Composing
             // Ensure SQLite support for local development
             builder.WithUmbracoCommerceBuilder().AddSQLite();
 
-            builder.Services.AddUnique<IConfigureOptions<ConnectionStringConfig>, ConfigureUmbracoCommerceConnectionString>();
+            builder.Services.AddUnique<IConfigureOptions<ConnectionStringConfig>, ConfigureUmbracoCommerceDeployConnectionString>();
 
             builder.Services.AddSingleton<UmbracoCommerceDeploySettingsAccessor>();
 
