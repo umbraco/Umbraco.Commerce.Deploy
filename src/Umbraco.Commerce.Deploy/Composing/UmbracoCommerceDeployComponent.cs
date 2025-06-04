@@ -59,31 +59,11 @@ public class UmbracoCommerceDeployComponent(
             new DeployRegisteredEntityTypeDetailOptions
             {
                 SupportsQueueForTransfer = true,
-                //SupportsQueueForTransferOfDescendents = true,
+                // SupportsQueueForTransferOfDescendents = false,
                 SupportsRestore = true,
                 PermittedToRestore = true,
                 SupportsPartialRestore = true,
                 SupportsImportExport = true,
-            },
-            (string id, bool descendants, IServiceProvider provider, out UdiRange? range) =>
-            {
-                // Root folder
-                if (int.TryParse(id, out var numericId) && numericId == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributes])
-                {
-                    range = new UdiRange(Udi.Create(UmbracoCommerceConstants.UdiEntityType.ProductAttribute), Constants.DeploySelector.DescendantsOfThis);
-                    return true;
-                }
-
-                // Single entity
-                if (Guid.TryParse(id, out Guid guidId))
-                {
-                    range = new UdiRange(Udi.Create(UmbracoCommerceConstants.UdiEntityType.ProductAttribute, guidId));
-                    return true;
-                }
-
-                // Out of range
-                range = null;
-                return false;
             });
 
         transferEntityService.RegisterTransferEntityType(
@@ -96,26 +76,6 @@ public class UmbracoCommerceDeployComponent(
                 PermittedToRestore = true,
                 SupportsPartialRestore = true,
                 SupportsImportExport = true,
-            },
-            (string id, bool descendants, IServiceProvider provider, out UdiRange? range) =>
-            {
-                // Root folder
-                if (int.TryParse(id, out var numericId) && numericId == Cms.Constants.Trees.Stores.Ids[Cms.Constants.Trees.Stores.NodeType.ProductAttributePresets])
-                {
-                    range = new UdiRange(Udi.Create(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset), Constants.DeploySelector.DescendantsOfThis);
-                    return true;
-                }
-
-                // Single entity
-                if (Guid.TryParse(id, out Guid guidId))
-                {
-                    range = new UdiRange(Udi.Create(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset, guidId));
-                    return true;
-                }
-
-                // Out of range
-                range = null;
-                return false;
             });
     }
 

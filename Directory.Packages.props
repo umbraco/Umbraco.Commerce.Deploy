@@ -12,6 +12,6 @@
   <ItemGroup>
     <PackageVersion Include="Umbraco.Commerce.Cms.Startup" Version="[16.0.0-rc1, 16.999.999)" />
     <PackageVersion Include="Umbraco.Commerce.Persistence.Sqlite" Version="[16.0.0-rc1, 16.999.999)" />
-    <PackageVersion Include="Umbraco.Deploy.Infrastructure" Version="[16.0.0-rc2, 16.999.999)" />
+    <PackageVersion Include="Umbraco.Deploy.Infrastructure" Version="[16.0.0-rc3, 16.999.999)" />
   </ItemGroup>
 </Project>

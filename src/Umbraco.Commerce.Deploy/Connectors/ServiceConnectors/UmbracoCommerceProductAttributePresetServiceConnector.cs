@@ -28,7 +28,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             "descendants"
         };
 
-        protected override string OpenUdiName => "All global:: Product Attribute Presets";
+        protected override string OpenUdiName => "All Umbraco Commerce Product Attribute Presets";
 
         public override string UdiEntityType => UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset;
 
