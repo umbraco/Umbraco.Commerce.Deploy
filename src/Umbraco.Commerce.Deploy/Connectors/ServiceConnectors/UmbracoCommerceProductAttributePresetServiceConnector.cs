@@ -63,7 +63,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
             var allowedAttributes = new List<AllowedProductAttributeArtifact>();
 
-            foreach (AllowedProductAttribute? allowedAttr in entity.AllowedAttributes)
+            foreach (AllowedProductAttribute? allowedAttr in entity.AllowedAttributes.OrderBy(x => x.ProductAttributeAlias))
             {
                 // Get product attribute ID
                 ProductAttributeReadOnly? attr = await _umbracoCommerceApi.GetProductAttributeAsync(entity.StoreId, allowedAttr.ProductAttributeAlias);
@@ -76,7 +76,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 allowedAttributes.Add(new AllowedProductAttributeArtifact
                 {
                     ProductAttributeUdi = attrUdi,
-                    AllowedValueAliases = allowedAttr.AllowedValueAliases
+                    AllowedValueAliases = allowedAttr.AllowedValueAliases.Order().ToList()
                 });
             }
 

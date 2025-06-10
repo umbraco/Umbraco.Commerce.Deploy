@@ -10,7 +10,7 @@ using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Commerce.Extensions;
-
+using Umbraco.Extensions;
 using StringExtensions = Umbraco.Commerce.Extensions.StringExtensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
@@ -94,7 +94,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 var servicesPrices = new List<ServicePriceArtifact>();
 
-                foreach (var price in entity.Prices.OrderBy(x => x.CountryId).ThenBy(x => x.RegionId).ThenBy(x => x.CurrencyId))
+                foreach (var price in entity.Prices.OrderBy(x => x.CurrencyId).ThenBy(x => x.CountryId).ThenBy(x => x.RegionId))
                 {
                     var spArtifact = new ServicePriceArtifact { Value = price.Value };
 
@@ -139,7 +139,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 var allowedCountryRegions = new List<AllowedCountryRegionArtifact>();
 
-                foreach (var acr in entity.AllowedCountryRegions)
+                foreach (var acr in entity.AllowedCountryRegions.OrderBy(x => x.CountryId).ThenBy(x => x.RegionId))
                 {
                     var acrArtifact = new AllowedCountryRegionArtifact();
 

@@ -102,7 +102,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 {
                     var servicesPrices = new List<ServicePriceArtifact>();
 
-                    foreach (ServicePrice? price in calcConfig.Prices)
+                    foreach (ServicePrice? price in calcConfig.Prices.OrderBy(x => x.CurrencyId).ThenBy(x => x.CountryId).ThenBy(x => x.RegionId))
                     {
                         var spArtifact = new ServicePriceArtifact { Value = price.Value };
 

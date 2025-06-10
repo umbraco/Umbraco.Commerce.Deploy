@@ -69,7 +69,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     DefaultValue = entity.Name.GetDefaultValue()
                 },
                 Code = entity.Alias,
-                Values = entity.Values.Select(x => new ProductAttributeValueArtifact
+                Values = entity.Values.OrderBy(x => x.Alias).Select(x => new ProductAttributeValueArtifact
                 {
                     Alias = x.Alias,
                     Name = new TranslatedValueArtifact<string>
