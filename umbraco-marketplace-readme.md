@@ -8,4 +8,4 @@ With Umbraco Commerce Deploy you can easily transfer your Umbraco Commerce setti
 
 * Deploy store settings between environments
 * Adapters for Umbraco Commerce property editors
-* Works OnPrem or with Umrbaco Cloud
+* Works OnPrem or with Umbraco Cloud
