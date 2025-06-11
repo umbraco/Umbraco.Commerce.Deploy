@@ -7,9 +7,9 @@ using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
-
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -40,10 +40,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<TaxClassReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((TaxClassReadOnly?)_umbracoCommerceApi.GetTaxClass(id));
+            => _umbracoCommerceApi.GetTaxClassAsync(id);
 
         public override IAsyncEnumerable<TaxClassReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetTaxClasses(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetTaxClassesAsync(storeId).AsAsyncEnumerable();
 
         public override Task<TaxClassArtifact?> GetArtifactAsync(GuidUdi? udi, TaxClassReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -119,16 +119,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<TaxClassArtifact, TaxClassReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<TaxClassArtifact, TaxClassReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     TaxClassArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    TaxClass? entity = state.Entity?.AsWritable(uow) ?? TaxClass.Create(
+                    TaxClass? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await TaxClass.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
@@ -136,30 +136,28 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         artifact.Name,
                         artifact.DefaultTaxRate);
 
-                    entity.SetName(artifact.Name, artifact.Alias)
-                        .SetDefaultTaxRate(artifact.DefaultTaxRate)
-                        .SetDefaultTaxCode(artifact.DefaultTaxCode)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetDefaultTaxRateAsync(artifact.DefaultTaxRate)
+                        .SetDefaultTaxCodeAsync(artifact.DefaultTaxCode)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveTaxClass(entity);
+                    await _umbracoCommerceApi.SaveTaxClassAsync(entity, ct);
 
                     state.Entity = entity;
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
 
-        private Task Pass4Async(ArtifactDeployState<TaxClassArtifact, TaxClassReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass4Async(ArtifactDeployState<TaxClassArtifact, TaxClassReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     TaxClassArtifact artifact = state.Artifact;
 
                     if (state.Entity != null)
                     {
-                        TaxClass? entity = _umbracoCommerceApi.GetTaxClass(state.Entity.Id).AsWritable(uow);
+                        TaxClass? entity = await _umbracoCommerceApi.GetTaxClassAsync(state.Entity.Id).AsWritableAsync(uow);
 
                         // Should probably validate the entity type here too, but really
                         // given we are using guids, the likelyhood of a matching guid
@@ -176,13 +174,13 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                                 if (crtr.RegionUdi == null)
                                 {
-                                    entity.SetCountryTaxClass(crtr.CountryUdi.Guid, crtr.TaxRate, crtr.TaxCode);
+                                    await entity.SetCountryTaxClassAsync(crtr.CountryUdi.Guid, crtr.TaxRate, crtr.TaxCode);
                                 }
                                 else
                                 {
                                     crtr.RegionUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Region);
 
-                                    entity.SetRegionTaxClass(crtr.CountryUdi.Guid, crtr.RegionUdi.Guid, crtr.TaxRate, crtr.TaxCode);
+                                    await entity.SetRegionTaxClassAsync(crtr.CountryUdi.Guid, crtr.RegionUdi.Guid, crtr.TaxRate, crtr.TaxCode);
                                 }
                             }
                         }
@@ -191,21 +189,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             if (crtr.RegionId == null)
                             {
-                                entity.ClearCountryTaxClass(crtr.CountryId);
+                                await entity.ClearCountryTaxClassAsync(crtr.CountryId);
                             }
                             else
                             {
-                                entity.ClearRegionTaxClass(crtr.CountryId, crtr.RegionId.Value);
+                                await entity.ClearRegionTaxClassAsync(crtr.CountryId, crtr.RegionId.Value);
                             }
                         }
 
-                        _umbracoCommerceApi.SaveTaxClass(entity);
+                        await _umbracoCommerceApi.SaveTaxClassAsync(entity, ct);
                     }
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
-
                 },
                 cancellationToken);
     }

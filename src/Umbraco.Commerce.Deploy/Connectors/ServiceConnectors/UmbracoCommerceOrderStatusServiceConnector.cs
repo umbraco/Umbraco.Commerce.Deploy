@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
@@ -9,6 +8,7 @@ using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -39,10 +39,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<OrderStatusReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((OrderStatusReadOnly?)_umbracoCommerceApi.GetOrderStatus(id));
+            => _umbracoCommerceApi.GetOrderStatusAsync(id);
 
         public override IAsyncEnumerable<OrderStatusReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetOrderStatuses(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetOrderStatusesAsync(storeId).AsAsyncEnumerable();
 
         public override Task<OrderStatusArtifact?> GetArtifactAsync(GuidUdi? udi, OrderStatusReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -81,31 +81,29 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<OrderStatusArtifact, OrderStatusReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<OrderStatusArtifact, OrderStatusReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     OrderStatusArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.OrderStatus);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    OrderStatus? entity = state.Entity?.AsWritable(uow) ?? OrderStatus.Create(
+                    OrderStatus? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await OrderStatus.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
                         artifact.Alias,
                         artifact.Name);
 
-                    entity.SetName(artifact.Name, artifact.Alias)
-                        .SetColor(artifact.Color)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetColorAsync(artifact.Color)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveOrderStatus(entity);
+                    await _umbracoCommerceApi.SaveOrderStatusAsync(entity, ct);
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
     }

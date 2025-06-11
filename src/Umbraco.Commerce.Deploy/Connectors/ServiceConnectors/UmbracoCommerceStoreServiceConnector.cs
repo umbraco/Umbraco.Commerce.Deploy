@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,10 +7,10 @@ using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
-
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Cms.Core.Services;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -46,10 +45,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<StoreReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((StoreReadOnly?)_umbracoCommerceApi.GetStore(id));
+            => _umbracoCommerceApi.GetStoreAsync(id);
 
         public override IAsyncEnumerable<StoreReadOnly> GetEntitiesAsync(CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetStores().ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetStoresAsync().AsAsyncEnumerable();
 
         public override Task<StoreArtifact?> GetArtifactAsync(GuidUdi? udi, StoreReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -208,57 +207,56 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    Store? entity = state.Entity?.AsWritable(uow) ?? Store.Create(
+                    Store? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Store.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.Alias,
                         artifact.Name,
                         false);
 
-                    entity.SetName(artifact.Name, artifact.Alias)
-                        .SetMeasurementSystem((MeasurementSystem)artifact.MeasurementSystem)
-                        .SetPriceTaxInclusivity(artifact.PricesIncludeTax)
-                        .SetCartNumberTemplate(artifact.CartNumberTemplate)
-                        .SetOrderNumberTemplate(artifact.OrderNumberTemplate)
-                        .SetOrderRoundingMethod((OrderRoundingMethod)artifact.OrderRoundingMethod)
-                        .SetProductPropertyAliases(artifact.ProductPropertyAliases, SetBehavior.Replace)
-                        .SetProductUniquenessPropertyAliases(artifact.ProductUniquenessPropertyAliases, SetBehavior.Replace)
-                        .SetGiftCardCodeLength(artifact.GiftCardCodeLength)
-                        .SetGiftCardCodeTemplate(artifact.GiftCardCodeTemplate)
-                        .SetGiftCardValidityTimeframe(artifact.GiftCardDaysValid)
-                        .SetGiftCardPropertyAliases(artifact.GiftCardPropertyAliases, SetBehavior.Replace)
-                        .SetGiftCardActivationMethod((GiftCardActivationMethod)artifact.GiftCardActivationMethod)
-                        .SetSortOrder(artifact.SortOrder)
-                        .SetAllowedUsers(artifact.AllowedUsers)
-                        .SetAllowedUserRoles(artifact.AllowedUserRoles);
+                    await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetMeasurementSystemAsync((MeasurementSystem)artifact.MeasurementSystem)
+                        .SetPriceTaxInclusivityAsync(artifact.PricesIncludeTax)
+                        .SetCartNumberTemplateAsync(artifact.CartNumberTemplate)
+                        .SetOrderNumberTemplateAsync(artifact.OrderNumberTemplate)
+                        .SetOrderRoundingMethodAsync((OrderRoundingMethod)artifact.OrderRoundingMethod)
+                        .SetProductPropertyAliasesAsync(artifact.ProductPropertyAliases, SetBehavior.Replace)
+                        .SetProductUniquenessPropertyAliasesAsync(artifact.ProductUniquenessPropertyAliases, SetBehavior.Replace)
+                        .SetGiftCardCodeLengthAsync(artifact.GiftCardCodeLength)
+                        .SetGiftCardCodeTemplateAsync(artifact.GiftCardCodeTemplate)
+                        .SetGiftCardValidityTimeframeAsync(artifact.GiftCardDaysValid)
+                        .SetGiftCardPropertyAliasesAsync(artifact.GiftCardPropertyAliases, SetBehavior.Replace)
+                        .SetGiftCardActivationMethodAsync((GiftCardActivationMethod)artifact.GiftCardActivationMethod)
+                        .SetSortOrderAsync(artifact.SortOrder)
+                        .SetAllowedUsersAsync(artifact.AllowedUsers)
+                        .SetAllowedUserRolesAsync(artifact.AllowedUserRoles);
 
                     if (artifact.CookieTimeout.HasValue)
                     {
-                        entity.EnableCookies(artifact.CookieTimeout.Value);
+                        await entity.EnableCookiesAsync(artifact.CookieTimeout.Value);
                     }
                     else
                     {
-                        entity.DisableCookies();
+                        await entity.DisableCookiesAsync();
                     }
 
-                    _umbracoCommerceApi.SaveStore(entity);
+                    await _umbracoCommerceApi.SaveStoreAsync(entity, ct);
 
                     state.Entity = entity;
 
                     uow.Complete();
                 },
-                cancellationToken)
-                .ConfigureAwait(false);
+                cancellationToken);
 
-        private Task Pass4Async(ArtifactDeployState<StoreArtifact, StoreReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass4Async(ArtifactDeployState<StoreArtifact, StoreReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     StoreArtifact artifact = state.Artifact;
 
                     if (state.Entity != null)
                     {
-                        Store? entity = _umbracoCommerceApi.GetStore(state.Entity.Id).AsWritable(uow);
+                        Store? entity = await _umbracoCommerceApi.GetStoreAsync(state.Entity.Id).AsWritableAsync(uow);
 
                         // BaseCurrency
                         Guid? baseCurrencyId = null;
@@ -267,10 +265,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.BaseCurrencyUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Currency);
 
-                            baseCurrencyId = _umbracoCommerceApi.GetCurrency(artifact.BaseCurrencyUdi.Guid)?.Id;
+                            baseCurrencyId = (await _umbracoCommerceApi.GetCurrencyAsync(artifact.BaseCurrencyUdi.Guid))?.Id;
                         }
 
-                        entity.SetBaseCurrency(baseCurrencyId);
+                        await entity.SetBaseCurrencyAsync(baseCurrencyId);
 
                         // DefaultCountry
                         Guid? defaultCountryId = null;
@@ -279,10 +277,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.DefaultCountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
-                            defaultCountryId = _umbracoCommerceApi.GetCountry(artifact.DefaultCountryUdi.Guid)?.Id;
+                            defaultCountryId = (await _umbracoCommerceApi.GetCountryAsync(artifact.DefaultCountryUdi.Guid))?.Id;
                         }
 
-                        entity.SetDefaultCountry(defaultCountryId);
+                        await entity.SetDefaultCountryAsync(defaultCountryId);
 
                         // DefaultTaxClass
                         Guid? defaultTaxClassId = null;
@@ -291,10 +289,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.DefaultTaxClassUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.TaxClass);
 
-                            defaultTaxClassId = _umbracoCommerceApi.GetTaxClass(artifact.DefaultTaxClassUdi.Guid)?.Id;
+                            defaultTaxClassId = (await _umbracoCommerceApi.GetTaxClassAsync(artifact.DefaultTaxClassUdi.Guid))?.Id;
                         }
 
-                        entity.SetDefaultTaxClass(defaultTaxClassId);
+                        await entity.SetDefaultTaxClassAsync(defaultTaxClassId);
 
                         // DefaultLocation
                         Guid? defaultLocationId = null;
@@ -303,10 +301,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.DefaultLocationUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Location);
 
-                            defaultLocationId = _umbracoCommerceApi.GetLocation(artifact.DefaultLocationUdi.Guid)?.Id;
+                            defaultLocationId = (await _umbracoCommerceApi.GetLocationAsync(artifact.DefaultLocationUdi.Guid))?.Id;
                         }
 
-                        entity.SetDefaultLocation(defaultLocationId);
+                        await entity.SetDefaultLocationAsync(defaultLocationId);
 
                         // DefaultOrderStatus
                         Guid? defaultOrderStatusId = null;
@@ -315,10 +313,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.DefaultOrderStatusUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.OrderStatus);
 
-                            defaultOrderStatusId = _umbracoCommerceApi.GetOrderStatus(artifact.DefaultOrderStatusUdi.Guid)?.Id;
+                            defaultOrderStatusId = (await _umbracoCommerceApi.GetOrderStatusAsync(artifact.DefaultOrderStatusUdi.Guid))?.Id;
                         }
 
-                        entity.SetDefaultOrderStatus(defaultOrderStatusId);
+                        await entity.SetDefaultOrderStatusAsync(defaultOrderStatusId);
 
                         // ErrorOrderStatus
                         Guid? errorOrderStatusId = null;
@@ -327,10 +325,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.ErrorOrderStatusUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.OrderStatus);
 
-                            errorOrderStatusId = _umbracoCommerceApi.GetOrderStatus(artifact.ErrorOrderStatusUdi.Guid)?.Id;
+                            errorOrderStatusId = (await _umbracoCommerceApi.GetOrderStatusAsync(artifact.ErrorOrderStatusUdi.Guid))?.Id;
                         }
 
-                        entity.SetErrorOrderStatus(errorOrderStatusId);
+                        await entity.SetErrorOrderStatusAsync(errorOrderStatusId);
 
                         // DefaultGiftCardEmailTemplate
                         Guid? defaultGiftCardEmailTemplateId = null;
@@ -339,10 +337,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.DefaultGiftCardEmailTemplateUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
 
-                            defaultGiftCardEmailTemplateId = _umbracoCommerceApi.GetEmailTemplate(artifact.DefaultGiftCardEmailTemplateUdi.Guid)?.Id;
+                            defaultGiftCardEmailTemplateId = (await _umbracoCommerceApi.GetEmailTemplateAsync(artifact.DefaultGiftCardEmailTemplateUdi.Guid))?.Id;
                         }
 
-                        entity.SetDefaultGiftCardEmailTemplate(defaultGiftCardEmailTemplateId);
+                        await entity.SetDefaultGiftCardEmailTemplateAsync(defaultGiftCardEmailTemplateId);
 
                         // ConfirmationEmailTemplate
                         Guid? confirmationEmailTemplateId = null;
@@ -351,10 +349,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.ConfirmationEmailTemplateUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
 
-                            confirmationEmailTemplateId = _umbracoCommerceApi.GetEmailTemplate(artifact.ConfirmationEmailTemplateUdi.Guid)?.Id;
+                            confirmationEmailTemplateId = (await _umbracoCommerceApi.GetEmailTemplateAsync(artifact.ConfirmationEmailTemplateUdi.Guid))?.Id;
                         }
 
-                        entity.SetConfirmationEmailTemplate(confirmationEmailTemplateId);
+                        await entity.SetConfirmationEmailTemplateAsync(confirmationEmailTemplateId);
 
                         // ErrorEmailTemplate
                         Guid? errorEmailTemplateId = null;
@@ -363,10 +361,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.ErrorEmailTemplateUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
 
-                            errorEmailTemplateId = _umbracoCommerceApi.GetEmailTemplate(artifact.ErrorEmailTemplateUdi.Guid)?.Id;
+                            errorEmailTemplateId = (await _umbracoCommerceApi.GetEmailTemplateAsync(artifact.ErrorEmailTemplateUdi.Guid))?.Id;
                         }
 
-                        entity.SetErrorEmailTemplate(errorEmailTemplateId);
+                        await entity.SetErrorEmailTemplateAsync(errorEmailTemplateId);
 
                         // StockSharingStore
                         Guid? stockSharingStore = null;
@@ -375,24 +373,22 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         {
                             artifact.ShareStockFromStoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                            stockSharingStore = _umbracoCommerceApi.GetStore(artifact.ShareStockFromStoreUdi.Guid)?.Id;
+                            stockSharingStore = (await _umbracoCommerceApi.GetStoreAsync(artifact.ShareStockFromStoreUdi.Guid))?.Id;
                         }
 
                         if (stockSharingStore.HasValue)
                         {
-                            entity.ShareStockFrom(stockSharingStore.Value);
+                            await entity.ShareStockFromAsync(stockSharingStore.Value);
                         }
                         else
                         {
-                            entity.StopSharingStock();
+                            await entity.StopSharingStockAsync();
                         }
 
-                        _umbracoCommerceApi.SaveStore(entity);
+                        await _umbracoCommerceApi.SaveStoreAsync(entity, ct);
                     }
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
     }

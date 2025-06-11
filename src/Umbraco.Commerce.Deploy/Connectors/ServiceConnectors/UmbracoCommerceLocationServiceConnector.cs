@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
@@ -9,6 +8,7 @@ using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -39,10 +39,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<LocationReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((LocationReadOnly?)_umbracoCommerceApi.GetLocation(id));
+            => _umbracoCommerceApi.GetLocationAsync(id);
 
         public override IAsyncEnumerable<LocationReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetLocations(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetLocationsAsync(storeId).AsAsyncEnumerable();
 
         public override Task<LocationArtifact?> GetArtifactAsync(GuidUdi? udi, LocationReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -87,32 +87,30 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<LocationArtifact, LocationReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<LocationArtifact, LocationReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     LocationArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Location);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    Location? entity = state.Entity?.AsWritable(uow) ?? Location.Create(
+                    Location? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Location.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
                         artifact.Alias,
                         artifact.Name);
 
-                    entity.SetName(artifact.Name, artifact.Alias)
-                        .SetType((LocationType)artifact.Type)
-                        .SetAddress(new Address(artifact.AddressLine1, artifact.AddressLine2, artifact.City, artifact.Region, artifact.CountryIsoCode, artifact.ZipCode))
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetTypeAsync((LocationType)artifact.Type)
+                        .SetAddressAsync(new Address(artifact.AddressLine1, artifact.AddressLine2, artifact.City, artifact.Region, artifact.CountryIsoCode, artifact.ZipCode))
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveLocation(entity);
+                    await _umbracoCommerceApi.SaveLocationAsync(entity, ct);
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
     }

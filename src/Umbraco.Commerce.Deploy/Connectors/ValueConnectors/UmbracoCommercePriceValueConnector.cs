@@ -1,18 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.Extensions.Options;
 using Umbraco.Commerce.Core.Api;
-using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Serialization;
 using Umbraco.Commerce.Core.Models;
-using Umbraco.Deploy.Core;
 using Umbraco.Deploy.Core.Connectors.ValueConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
@@ -81,14 +76,18 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             var dstDict = new Dictionary<Guid, decimal?>();
 
-            foreach (KeyValuePair<string, decimal?> kvp in srcDict)
+            if (srcDict != null)
             {
-                if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) && udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
+                foreach (KeyValuePair<string, decimal?> kvp in srcDict)
                 {
-                    CurrencyReadOnly? currencyEntity = umbracoCommerceApi.GetCurrency(udi.Guid);
-                    if (currencyEntity != null)
+                    if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) &&
+                        udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
                     {
-                        dstDict.Add(currencyEntity.Id, kvp.Value);
+                        CurrencyReadOnly? currencyEntity = await umbracoCommerceApi.GetCurrencyAsync(udi.Guid);
+                        if (currencyEntity != null)
+                        {
+                            dstDict.Add(currencyEntity.Id, kvp.Value);
+                        }
                     }
                 }
             }

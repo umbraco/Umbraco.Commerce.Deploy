@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Umbraco.Commerce.Cms.Startup" />
+        <PackageReference Include="Umbraco.Commerce.Persistence.Sqlite" />
         <PackageReference Include="Umbraco.Deploy.Infrastructure" />
     </ItemGroup>
 
