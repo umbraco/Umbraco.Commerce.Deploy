@@ -21,6 +21,10 @@ namespace Umbraco.Commerce.Deploy.Artifacts
 
         public GuidUdi? ErrorOrderStatusUdi { get; set; }
 
+        public string? LogoImageUrl { get; set; }
+
+        public string? ThemeColor { get; set; }
+
         public int MeasurementSystem { get; set; }
 
         public bool PricesIncludeTax { get; set; }

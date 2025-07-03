@@ -63,6 +63,8 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             {
                 Name = entity.Name,
                 Alias = entity.Alias,
+                LogoImageUrl = entity.LogoImageUrl,
+                ThemeColor = entity.ThemeColor,
                 MeasurementSystem = (int)entity.MeasurementSystem,
                 PricesIncludeTax = entity.PricesIncludeTax,
                 CookieTimeout = entity.CookieTimeout,
@@ -215,6 +217,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         false);
 
                     await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetThemeSettingsAsync(new StoreThemeSettings{
+                            LogoImageUrl = artifact.LogoImageUrl,
+                            ThemeColor = artifact.ThemeColor
+                        })
                         .SetMeasurementSystemAsync((MeasurementSystem)artifact.MeasurementSystem)
                         .SetPriceTaxInclusivityAsync(artifact.PricesIncludeTax)
                         .SetCartNumberTemplateAsync(artifact.CartNumberTemplate)
