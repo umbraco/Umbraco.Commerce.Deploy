@@ -61,6 +61,12 @@ namespace Umbraco.Commerce.Deploy.Artifacts
 
         public GuidUdi? ErrorEmailTemplateUdi { get; set; }
 
+        public GuidUdi? AbandonedCartEmailTemplateUdi { get; set; }
+
+        public int? AbandonedCartInactivityPeriod { get; set; }
+
+        public string? AbandonedCartLandingPageUrl { get; set; }
+
         public IEnumerable<string>? AllowedUsers { get; set; }
 
         public IEnumerable<string>?AllowedUserRoles { get; set; }
