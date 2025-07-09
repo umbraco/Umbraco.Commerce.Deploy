@@ -78,6 +78,8 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 GiftCardCodeTemplate = entity.GiftCardCodeTemplate,
                 GiftCardPropertyAliases = entity.GiftCardPropertyAliases,
                 GiftCardActivationMethod = (int)entity.GiftCardActivationMethod,
+                AbandonedCartInactivityPeriod = entity.AbandonedCartInactivityPeriod,
+                AbandonedCartLandingPageUrl = entity.AbandonedCartLandingPageUrl,
                 AllowedUsers = entity.AllowedUsers.Select(x => x.UserId).ToList(),
                 AllowedUserRoles = entity.AllowedUserRoles.Select(x => x.Role).ToList(),
             };
@@ -170,6 +172,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 var dep = new UmbracoCommerceArtifactDependency(depUdi);
                 dependencies.Add(dep);
                 artifact.ErrorEmailTemplateUdi = depUdi;
+            }
+
+            // Abandoned Cart Notification email template
+            if (entity.AbandonedCartEmailTemplateId.HasValue)
+            {
+                var depUdi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.EmailTemplate, entity.AbandonedCartEmailTemplateId.Value);
+                var dep = new UmbracoCommerceArtifactDependency(depUdi);
+                dependencies.Add(dep);
+                artifact.AbandonedCartEmailTemplateUdi = depUdi;
             }
 
             // Stock sharing store
@@ -371,6 +382,21 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         }
 
                         await entity.SetErrorEmailTemplateAsync(errorEmailTemplateId);
+
+                        // Abandoned
+                        Guid? abandonedCartEmailTemplateId = null;
+
+                        if (artifact.AbandonedCartEmailTemplateUdi != null)
+                        {
+                            artifact.AbandonedCartEmailTemplateUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.EmailTemplate);
+
+                            abandonedCartEmailTemplateId = (await _umbracoCommerceApi.GetEmailTemplateAsync(artifact.AbandonedCartEmailTemplateUdi.Guid))?.Id;
+                        }
+
+                        await entity.SetAbandonedCartSettingsAsync(
+                            abandonedCartEmailTemplateId,
+                            artifact.AbandonedCartInactivityPeriod ?? 0,
+                            artifact.AbandonedCartLandingPageUrl);
 
                         // StockSharingStore
                         Guid? stockSharingStore = null;
