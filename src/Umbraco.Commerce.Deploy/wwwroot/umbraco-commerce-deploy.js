@@ -10,10 +10,8 @@ export const onInit = async (host, extensionRegistry) => {
         localizations: {
           // Entity types
           deploy_entityTypes: {
-            "uc:product-attribute": "Umbraco Commerce Product Attribute",
-            "uc:product-attributes": "Umbraco Commerce Product Attributes",
-            "uc:product-attribute-preset": "Umbraco Commerce Product Attribute Preset",
-            "uc:product-attribute-presets": "Umbraco Commerce Product Attribute Presets"
+            "umbraco-commerce-product-attribute": "Umbraco Commerce Product Attribute",
+            "umbraco-commerce-product-attribute-preset": "Umbraco Commerce Product Attribute Preset"
           }
         }
       },
