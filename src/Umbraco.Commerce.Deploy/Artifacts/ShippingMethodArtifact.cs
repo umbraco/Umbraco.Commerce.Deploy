@@ -25,6 +25,7 @@ namespace Umbraco.Commerce.Deploy.Artifacts
         public SortedDictionary<string, string> ShippingProviderSettings { get; set; }
 
         public IEnumerable<AllowedCountryRegionArtifact>? AllowedCountryRegions { get; set; }
+        public bool IsEnabled { get; set; }
         public int SortOrder { get; set; }
     }
 }

@@ -23,6 +23,7 @@ namespace Umbraco.Commerce.Deploy.Artifacts
         public bool CanRefundPayments { get; set; }
 
         public IEnumerable<AllowedCountryRegionArtifact>? AllowedCountryRegions { get; set; }
+        public bool IsEnabled { get; set; }
         public int SortOrder { get; set; }
     }
 }

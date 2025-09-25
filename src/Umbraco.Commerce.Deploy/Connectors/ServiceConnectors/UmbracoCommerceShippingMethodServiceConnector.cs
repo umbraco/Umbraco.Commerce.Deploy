@@ -77,6 +77,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 ShippingProviderSettings = new SortedDictionary<string, string>(entity.ShippingProviderSettings
                     .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.ShippingMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transfered
                     .ToDictionary(x => x.Key, x => x.Value)), // Could contain UDIs?
+                IsEnabled = entity.IsEnabled,
                 SortOrder = entity.SortOrder
             };
 
@@ -231,6 +232,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         .SetSkuAsync(artifact.Sku)
                         .SetImageAsync(artifact.ImageId)
                         .SetSettingsAsync(settings, SetBehavior.Merge)
+                        .SetEnabledAsync(artifact.IsEnabled)
                         .SetSortOrderAsync(artifact.SortOrder);
 
                     await _umbracoCommerceApi.SaveShippingMethodAsync(entity, ct);
