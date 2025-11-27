@@ -33,7 +33,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            StoreReadOnly? store = umbracoCommerceApi.GetStore(storeId);
+            StoreReadOnly? store = await umbracoCommerceApi.GetStoreAsync(storeId);
 
             if (store == null)
             {
@@ -59,7 +59,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            StoreReadOnly? store = umbracoCommerceApi.GetStore(udi.Guid);
+            StoreReadOnly? store = await umbracoCommerceApi.GetStoreAsync(udi.Guid);
 
             return store != null ? store.Id.ToString() : null;
         }

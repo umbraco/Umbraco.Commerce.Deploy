@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
+using Umbraco.Commerce.Extensions;
 
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
@@ -40,10 +40,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<PrintTemplateReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((PrintTemplateReadOnly?)_umbracoCommerceApi.GetPrintTemplate(id));
+            => _umbracoCommerceApi.GetPrintTemplateAsync(id);
 
         public override IAsyncEnumerable<PrintTemplateReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetPrintTemplates(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetPrintTemplatesAsync(storeId).AsAsyncEnumerable();
 
         public override Task<PrintTemplateArtifact?> GetArtifactAsync(GuidUdi? udi, PrintTemplateReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -83,32 +83,30 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<PrintTemplateArtifact, PrintTemplateReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<PrintTemplateArtifact, PrintTemplateReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     PrintTemplateArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.PrintTemplate);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    PrintTemplate? entity = state.Entity?.AsWritable(uow) ?? PrintTemplate.Create(
+                    PrintTemplate? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await PrintTemplate.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
                         artifact.Alias,
                         artifact.Name);
 
-                    entity.SetName(artifact.Name, artifact.Alias)
-                        .SetCategory((TemplateCategory)artifact.Category)
-                        .SetTemplateView(artifact.TemplateView)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name, artifact.Alias)
+                        .SetCategoryAsync((TemplateCategory)artifact.Category)
+                        .SetTemplateViewAsync(artifact.TemplateView)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SavePrintTemplate(entity);
+                    await _umbracoCommerceApi.SavePrintTemplateAsync(entity, ct);
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
     }

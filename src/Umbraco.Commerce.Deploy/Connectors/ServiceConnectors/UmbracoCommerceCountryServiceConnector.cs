@@ -9,6 +9,7 @@ using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -39,12 +40,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<CountryReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((CountryReadOnly?)_umbracoCommerceApi.GetCountry(id));
+            => _umbracoCommerceApi.GetCountryAsync(id);
 
         public override IAsyncEnumerable<CountryReadOnly> GetEntitiesAsync(
             Guid storeId,
             CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetCountries(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetCountriesAsync(storeId).AsAsyncEnumerable();
 
         public override Task<CountryArtifact?> GetArtifactAsync(GuidUdi? udi, CountryReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -135,45 +136,43 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass2Async(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass2Async(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     CountryArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    Country? entity = state.Entity?.AsWritable(uow) ?? Country.Create(
+                    Country? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Country.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
                         artifact.Code,
                         artifact.Name);
 
-                    entity.SetName(artifact.Name)
-                        .SetCode(artifact.Code)
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetNameAsync(artifact.Name)
+                        .SetCodeAsync(artifact.Code)
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveCountry(entity);
+                    await _umbracoCommerceApi.SaveCountryAsync(entity, ct);
 
                     state.Entity = entity;
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
 
-        private Task Pass4Async(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass4Async(ArtifactDeployState<CountryArtifact, CountryReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     CountryArtifact artifact = state.Artifact;
 
                     if (state.Entity != null)
                     {
-                        Country? entity = _umbracoCommerceApi.GetCountry(state.Entity.Id).AsWritable(uow);
+                        Country? entity = await _umbracoCommerceApi.GetCountryAsync(state.Entity.Id).AsWritableAsync(uow);
 
                         if (artifact.TaxCalculationMethodUdi != null)
                         {
@@ -181,7 +180,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             // TODO: Check the tax calculation method exists?
                         }
 
-                        entity.SetTaxCalculationMethod(artifact.TaxCalculationMethodUdi?.Guid);
+                        await entity.SetTaxCalculationMethodAsync(artifact.TaxCalculationMethodUdi?.Guid);
 
                         if (artifact.DefaultCurrencyUdi != null)
                         {
@@ -189,7 +188,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             // TODO: Check the currency exists?
                         }
 
-                        entity.SetDefaultCurrency(artifact.DefaultCurrencyUdi?.Guid);
+                        await entity.SetDefaultCurrencyAsync(artifact.DefaultCurrencyUdi?.Guid);
 
                         if (artifact.DefaultPaymentMethodUdi != null)
                         {
@@ -197,7 +196,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             // TODO: Check the payment method exists?
                         }
 
-                        entity.SetDefaultPaymentMethod(artifact.DefaultPaymentMethodUdi?.Guid);
+                        await entity.SetDefaultPaymentMethodAsync(artifact.DefaultPaymentMethodUdi?.Guid);
 
                         if (artifact.DefaultShippingMethodUdi != null)
                         {
@@ -205,14 +204,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                             // TODO: Check the payment method exists?
                         }
 
-                        entity.SetDefaultShippingMethod(artifact.DefaultShippingMethodUdi?.Guid);
+                        await entity.SetDefaultShippingMethodAsync(artifact.DefaultShippingMethodUdi?.Guid);
 
-                        _umbracoCommerceApi.SaveCountry(entity);
+                        await _umbracoCommerceApi.SaveCountryAsync(entity, ct);
                     }
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
     }

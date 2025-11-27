@@ -21,8 +21,10 @@ namespace Umbraco.Commerce.Deploy.Artifacts
         public bool CanCapturePayments { get; set; }
         public bool CanCancelPayments { get; set; }
         public bool CanRefundPayments { get; set; }
+        public bool CanPartiallyRefundPayments { get; set; }
 
         public IEnumerable<AllowedCountryRegionArtifact>? AllowedCountryRegions { get; set; }
+        public bool IsEnabled { get; set; }
         public int SortOrder { get; set; }
     }
 }

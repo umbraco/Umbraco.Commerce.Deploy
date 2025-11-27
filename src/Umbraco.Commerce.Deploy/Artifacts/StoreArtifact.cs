@@ -21,6 +21,10 @@ namespace Umbraco.Commerce.Deploy.Artifacts
 
         public GuidUdi? ErrorOrderStatusUdi { get; set; }
 
+        public string? LogoImageUrl { get; set; }
+
+        public string? ThemeColor { get; set; }
+
         public int MeasurementSystem { get; set; }
 
         public bool PricesIncludeTax { get; set; }
@@ -56,6 +60,12 @@ namespace Umbraco.Commerce.Deploy.Artifacts
         public GuidUdi? ConfirmationEmailTemplateUdi { get; set; }
 
         public GuidUdi? ErrorEmailTemplateUdi { get; set; }
+
+        public GuidUdi? AbandonedCartEmailTemplateUdi { get; set; }
+
+        public int? AbandonedCartInactivityPeriod { get; set; }
+
+        public string? AbandonedCartLandingPageUrl { get; set; }
 
         public IEnumerable<string>? AllowedUsers { get; set; }
 

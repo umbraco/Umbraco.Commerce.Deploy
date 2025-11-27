@@ -9,7 +9,7 @@ using Umbraco.Commerce.Deploy.Artifacts;
 using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
-using Umbraco.Extensions;
+using Umbraco.Commerce.Extensions;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -42,10 +42,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             => entity.Name;
 
         public override Task<ProductAttributeReadOnly?> GetEntityAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult((ProductAttributeReadOnly?)_umbracoCommerceApi.GetProductAttribute(id));
+            => _umbracoCommerceApi.GetProductAttributeAsync(id);
 
         public override IAsyncEnumerable<ProductAttributeReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
-            => _umbracoCommerceApi.GetProductAttributes(storeId).ToAsyncEnumerable();
+            => _umbracoCommerceApi.GetProductAttributesAsync(storeId).AsAsyncEnumerable();
 
         public override Task<ProductAttributeArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributeReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -69,7 +69,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     DefaultValue = entity.Name.GetDefaultValue()
                 },
                 Code = entity.Alias,
-                Values = entity.Values.Select(x => new ProductAttributeValueArtifact
+                Values = entity.Values.OrderBy(x => x.Alias).Select(x => new ProductAttributeValueArtifact
                 {
                     Alias = x.Alias,
                     Name = new TranslatedValueArtifact<string>
@@ -98,34 +98,32 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
         }
 
-        private Task Pass3Async(ArtifactDeployState<ProductAttributeArtifact, ProductAttributeReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
-            _umbracoCommerceApi.Uow.ExecuteAsync(
-                (uow, ct) =>
+        private async Task Pass3Async(ArtifactDeployState<ProductAttributeArtifact, ProductAttributeReadOnly> state, IDeployContext context, CancellationToken cancellationToken = default) =>
+            await _umbracoCommerceApi.Uow.ExecuteAsync(
+                async (uow, ct) =>
                 {
                     ProductAttributeArtifact artifact = state.Artifact;
 
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.ProductAttribute);
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
-                    ProductAttribute? entity = state.Entity?.AsWritable(uow) ?? ProductAttribute.Create(
+                    ProductAttribute? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await ProductAttribute.CreateAsync(
                         uow,
                         artifact.Udi.Guid,
                         artifact.StoreUdi.Guid,
                         artifact.Alias,
                         artifact.Name.DefaultValue);
 
-                    entity.SetAlias(artifact.Alias)
-                        .SetName(new TranslatedValue<string>(artifact.Name.DefaultValue, artifact.Name.Translations))
-                        .SetValues(artifact.Values.Select(x => new KeyValuePair<string, TranslatedValue<string>>(x.Alias, new TranslatedValue<string>(x.Name.DefaultValue, x.Name.Translations))))
-                        .SetSortOrder(artifact.SortOrder);
+                    await entity.SetAliasAsync(artifact.Alias)
+                        .SetNameAsync(new TranslatedValue<string>(artifact.Name.DefaultValue, artifact.Name.Translations))
+                        .SetValuesAsync(artifact.Values.Select(x => new KeyValuePair<string, TranslatedValue<string>>(x.Alias, new TranslatedValue<string>(x.Name.DefaultValue, x.Name.Translations))))
+                        .SetSortOrderAsync(artifact.SortOrder);
 
-                    _umbracoCommerceApi.SaveProductAttribute(entity);
+                    await _umbracoCommerceApi.SaveProductAttributeAsync(entity, ct);
 
                     state.Entity = entity;
 
                     uow.Complete();
-
-                    return Task.CompletedTask;
                 },
                 cancellationToken);
     }

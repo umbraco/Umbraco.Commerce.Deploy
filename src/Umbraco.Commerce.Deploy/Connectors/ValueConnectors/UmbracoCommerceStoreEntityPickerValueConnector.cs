@@ -115,35 +115,35 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             return null;
         }
 
-        private Task<EntityBase?> GetEntityAsync(string entityType, Guid id, CancellationToken cancellationToken = default)
+        private async Task<EntityBase?> GetEntityAsync(string entityType, Guid id, CancellationToken cancellationToken = default)
         {
             switch (entityType)
             {
                 case UmbracoCommerceConstants.UdiEntityType.Location:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetLocation(id));
+                    return await umbracoCommerceApi.GetLocationAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.OrderStatus:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetOrderStatus(id));
+                    return await umbracoCommerceApi.GetOrderStatusAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.Country:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetCountry(id));
+                    return await umbracoCommerceApi.GetCountryAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.ShippingMethod:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetShippingMethod(id));
+                    return await umbracoCommerceApi.GetShippingMethodAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.PaymentMethod:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetPaymentMethod(id));
+                    return await umbracoCommerceApi.GetPaymentMethodAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.Currency:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetCurrency(id));
+                    return await umbracoCommerceApi.GetCurrencyAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.TaxClass:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetTaxClass(id));
+                    return await umbracoCommerceApi.GetTaxClassAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.EmailTemplate:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetEmailTemplate(id));
+                    return await umbracoCommerceApi.GetEmailTemplateAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.ExportTemplate:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetExportTemplate(id));
+                    return await umbracoCommerceApi.GetExportTemplateAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.PrintTemplate:
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetPrintTemplate(id));
+                    return await umbracoCommerceApi.GetPrintTemplateAsync(id);
                 case UmbracoCommerceConstants.UdiEntityType.Discount:  // Not sure if discounts should transfer as these are "user generated"
-                    return Task.FromResult<EntityBase?>(umbracoCommerceApi.GetDiscount(id));
+                    return await umbracoCommerceApi.GetDiscountAsync(id);
             }
 
-            return Task.FromResult<EntityBase?>(null);
+            return null;
         }
     }
 }

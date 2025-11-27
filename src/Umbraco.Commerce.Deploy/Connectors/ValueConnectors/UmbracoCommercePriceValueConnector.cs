@@ -1,27 +1,41 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.Extensions.Options;
 using Umbraco.Commerce.Core.Api;
-using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Serialization;
+using Umbraco.Commerce.Common.Logging;
 using Umbraco.Commerce.Core.Models;
-using Umbraco.Deploy.Core;
 using Umbraco.Deploy.Core.Connectors.ValueConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
-    public class UmbracoCommercePriceValueConnector(
-        IUmbracoCommerceApi umbracoCommerceApi,
-        IJsonSerializer jsonSerializer)
-        : ValueConnectorBase
+    public class UmbracoCommercePriceValueConnector : ValueConnectorBase
     {
+        private IUmbracoCommerceApi _umbracoCommerceApi;
+        private IJsonSerializer _jsonSerializer;
+        private ILogger<UmbracoCommercePriceValueConnector>? _logger;
+
+        public UmbracoCommercePriceValueConnector(IUmbracoCommerceApi umbracoCommerceApi,
+            IJsonSerializer jsonSerializer,
+            ILogger<UmbracoCommercePriceValueConnector> logger)
+        {
+            _umbracoCommerceApi = umbracoCommerceApi ?? throw new ArgumentNullException(nameof(umbracoCommerceApi));
+            _jsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
+            _logger = logger;
+        }
+
+        public UmbracoCommercePriceValueConnector(IUmbracoCommerceApi umbracoCommerceApi,
+            IJsonSerializer jsonSerializer)
+        {
+            _umbracoCommerceApi = umbracoCommerceApi ?? throw new ArgumentNullException(nameof(umbracoCommerceApi));
+            _jsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
+            _logger = null;
+        }
+
         public override IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.Price" };
 
         public override async Task<string?> ToArtifactAsync(
@@ -38,27 +52,35 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            Dictionary<Guid, decimal?>? srcDict = jsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue);
-
-            var dstDict = new Dictionary<string, decimal?>();
-
-            foreach (KeyValuePair<Guid, decimal?> kvp in srcDict)
+            try
             {
-                var udi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, kvp.Key);
+                Dictionary<Guid, decimal?>? srcDict = _jsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue);
 
-                // Because we store Guid IDs anyway we don't necessarily need to fetch
-                // the Currency entity to look anything up, it's mostly a question
-                // of whether we want to validate the Currency exists. I'm not sure
-                // whether this should really be the responsibility of the property editor
-                // though and we should just be able to trust the property editor value
-                // is valid?
+                var dstDict = new Dictionary<string, decimal?>();
 
-                dependencies.Add(new UmbracoCommerceArtifactDependency(udi, ArtifactDependencyMode.Exist));
+                foreach (KeyValuePair<Guid, decimal?> kvp in srcDict)
+                {
+                    var udi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, kvp.Key);
 
-                dstDict.Add(udi.ToString(), kvp.Value);
+                    // Because we store Guid IDs anyway we don't necessarily need to fetch
+                    // the Currency entity to look anything up, it's mostly a question
+                    // of whether we want to validate the Currency exists. I'm not sure
+                    // whether this should really be the responsibility of the property editor
+                    // though and we should just be able to trust the property editor value
+                    // is valid?
+
+                    dependencies.Add(new UmbracoCommerceArtifactDependency(udi, ArtifactDependencyMode.Exist));
+
+                    dstDict.Add(udi.ToString(), kvp.Value);
+                }
+
+                return _jsonSerializer.Serialize(dstDict);
             }
-
-            return jsonSerializer.Serialize(dstDict);
+            catch (Exception ex)
+            {
+                _logger?.Error(ex, "Failed to serialize price value to artifact: {Value}", svalue);
+                return null;
+            }
         }
 
 
@@ -77,23 +99,36 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                 return null;
             }
 
-            Dictionary<string, decimal?>? srcDict = jsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue);
-
-            var dstDict = new Dictionary<Guid, decimal?>();
-
-            foreach (KeyValuePair<string, decimal?> kvp in srcDict)
+            try
             {
-                if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) && udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
+                Dictionary<string, decimal?>? srcDict =
+                    _jsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue);
+
+                var dstDict = new Dictionary<Guid, decimal?>();
+
+                if (srcDict != null)
                 {
-                    CurrencyReadOnly? currencyEntity = umbracoCommerceApi.GetCurrency(udi.Guid);
-                    if (currencyEntity != null)
+                    foreach (KeyValuePair<string, decimal?> kvp in srcDict)
                     {
-                        dstDict.Add(currencyEntity.Id, kvp.Value);
+                        if (UdiHelper.TryParseGuidUdi(kvp.Key, out GuidUdi? udi) &&
+                            udi!.EntityType == UmbracoCommerceConstants.UdiEntityType.Currency)
+                        {
+                            CurrencyReadOnly? currencyEntity = await _umbracoCommerceApi.GetCurrencyAsync(udi.Guid);
+                            if (currencyEntity != null)
+                            {
+                                dstDict.Add(currencyEntity.Id, kvp.Value);
+                            }
+                        }
                     }
                 }
-            }
 
-            return jsonSerializer.Serialize(dstDict);
+                return _jsonSerializer.Serialize(dstDict);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error(ex, "Failed to deserialize price value from artifact: {Value}", svalue);
+                return null;
+            }
         }
     }
 }

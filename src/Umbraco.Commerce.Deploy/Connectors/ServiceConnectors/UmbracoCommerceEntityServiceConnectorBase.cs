@@ -91,6 +91,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 throw new ArgumentException("Invalid identifier.", nameof(sid));
             }
 
+            // See if the sid is a Store ID, if so, it's a root UDI
+            StoreReadOnly? store = await _umbracoCommerceApi.GetStoreAsync(result);
+            if (store != null)
+            {
+                EnsureOpenSelector(selector);
+                return new NamedUdiRange(Udi.Create(UdiEntityType), OpenUdiName, selector);
+            }
+
+            // If it's not a store ID, then is must be an entity ID
             TEntity? entity = await GetEntityAsync(result, cancellationToken).ConfigureAwait(false);
 
             if (entity == null)
