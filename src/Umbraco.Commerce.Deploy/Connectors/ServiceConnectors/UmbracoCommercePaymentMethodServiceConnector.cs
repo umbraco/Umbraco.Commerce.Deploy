@@ -75,6 +75,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 CanCapturePayments = entity.CanCapturePayments,
                 CanCancelPayments = entity.CanCancelPayments,
                 CanRefundPayments = entity.CanRefundPayments,
+                CanPartiallyRefundPayments = entity.CanPartiallyRefundPayments,
                 IsEnabled = entity.IsEnabled,
                 SortOrder = entity.SortOrder
             };
@@ -214,7 +215,14 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         .SetSkuAsync(artifact.Sku)
                         .SetImageAsync(artifact.ImageId)
                         .SetSettingsAsync(settings, SetBehavior.Merge)
-                        .ToggleFeaturesAsync(artifact.CanFetchPaymentStatuses, artifact.CanCapturePayments, artifact.CanCancelPayments, artifact.CanRefundPayments)
+                        .ToggleFeaturesAsync(new PaymentMethodToggleFeatures
+                        {
+                           CanFetchPaymentStatuses = artifact.CanFetchPaymentStatuses,
+                           CanCapturePayments = artifact.CanCapturePayments,
+                           CanCancelPayments = artifact.CanCancelPayments,
+                           CanRefundPayments = artifact.CanRefundPayments,
+                           CanPartiallyRefundPayments = artifact.CanPartiallyRefundPayments
+                        })
                         .SetEnabledAsync(artifact.IsEnabled)
                         .SetSortOrderAsync(artifact.SortOrder);
 
