@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,6 +44,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override IAsyncEnumerable<PrintTemplateReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetPrintTemplatesAsync(storeId).AsAsyncEnumerable();
+
+        public override Task<PrintTemplateReadOnly?> GetExistingEntityAsync(PrintTemplateArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetPrintTemplateAsync(artifact.StoreUdi.Guid, artifact.Alias);
 
         public override Task<PrintTemplateArtifact?> GetArtifactAsync(GuidUdi? udi, PrintTemplateReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -93,11 +96,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     PrintTemplate? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await PrintTemplate.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name);
 
                     await entity.SetNameAsync(artifact.Name, artifact.Alias)
                         .SetCategoryAsync((TemplateCategory)artifact.Category)
