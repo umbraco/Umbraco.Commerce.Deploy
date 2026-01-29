@@ -47,6 +47,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override IAsyncEnumerable<PaymentMethodReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetPaymentMethodsAsync(storeId).AsAsyncEnumerable();
 
+        public override Task<PaymentMethodReadOnly?> GetExistingEntityAsync(PaymentMethodArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetPaymentMethodAsync(artifact.StoreUdi.Guid, artifact.Alias);
+
         public override Task<PaymentMethodArtifact?> GetArtifactAsync(GuidUdi? udi, PaymentMethodReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
@@ -200,12 +203,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     PaymentMethod? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await PaymentMethod.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name,
-                        artifact.PaymentProviderAlias);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name,
+                            artifact.PaymentProviderAlias);
 
                     var settings = artifact.PaymentProviderSettings
                         .Where(x => !StringExtensions.InvariantContains(_settingsAccessor.Settings.PaymentMethods.IgnoreSettings, x.Key)) // Ignore any settings that shouldn't be transferred

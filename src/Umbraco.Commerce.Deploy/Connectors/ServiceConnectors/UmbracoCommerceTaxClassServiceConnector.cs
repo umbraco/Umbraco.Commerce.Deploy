@@ -45,6 +45,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override IAsyncEnumerable<TaxClassReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetTaxClassesAsync(storeId).AsAsyncEnumerable();
 
+        public override Task<TaxClassReadOnly?> GetExistingEntityAsync(TaxClassArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetTaxClassAsync(artifact.StoreUdi.Guid, artifact.Alias);
+
         public override Task<TaxClassArtifact?> GetArtifactAsync(GuidUdi? udi, TaxClassReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
@@ -129,12 +132,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     TaxClass? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await TaxClass.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name,
-                        artifact.DefaultTaxRate);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name,
+                            artifact.DefaultTaxRate);
 
                     await entity.SetNameAsync(artifact.Name, artifact.Alias)
                         .SetDefaultTaxRateAsync(artifact.DefaultTaxRate)

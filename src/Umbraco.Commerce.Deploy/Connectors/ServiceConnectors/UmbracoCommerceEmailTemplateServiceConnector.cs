@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,6 +43,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override IAsyncEnumerable<EmailTemplateReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetEmailTemplatesAsync(storeId).AsAsyncEnumerable();
+
+        public override Task<EmailTemplateReadOnly?> GetExistingEntityAsync(EmailTemplateArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetEmailTemplateAsync(artifact.StoreUdi.Guid, artifact.Alias);
 
         public override Task<EmailTemplateArtifact?> GetArtifactAsync(GuidUdi? udi, EmailTemplateReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -99,11 +102,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     EmailTemplate? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await EmailTemplate.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name);
 
                     await entity.SetNameAsync(artifact.Name, artifact.Alias)
                         .SetCategoryAsync((TemplateCategory)artifact.Category)

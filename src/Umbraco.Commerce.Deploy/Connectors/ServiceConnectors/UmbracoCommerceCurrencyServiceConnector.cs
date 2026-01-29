@@ -47,6 +47,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetCurrenciesAsync(storeId).AsAsyncEnumerable();
 
+        public override Task<CurrencyReadOnly?> GetExistingEntityAsync(CurrencyArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetCurrencyAsync(artifact.StoreUdi.Guid, artifact.Code);
+
         public override Task<CurrencyArtifact?> GetArtifactAsync(GuidUdi? udi, CurrencyReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
@@ -118,12 +121,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     Currency? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Currency.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Code,
-                        artifact.Name,
-                        artifact.CultureName);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Code,
+                            artifact.Name,
+                            artifact.CultureName);
 
                     await entity.SetNameAsync(artifact.Name)
                         .SetCodeAsync(artifact.Code)
