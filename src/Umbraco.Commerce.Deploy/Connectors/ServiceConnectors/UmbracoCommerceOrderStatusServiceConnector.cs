@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,6 +43,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override IAsyncEnumerable<OrderStatusReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetOrderStatusesAsync(storeId).AsAsyncEnumerable();
+
+        public override Task<OrderStatusReadOnly?> GetExistingEntityAsync(OrderStatusArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetOrderStatusAsync(artifact.StoreUdi.Guid, artifact.Alias);
 
         public override Task<OrderStatusArtifact?> GetArtifactAsync(GuidUdi? udi, OrderStatusReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -91,11 +94,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     OrderStatus? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await OrderStatus.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name);
 
                     await entity.SetNameAsync(artifact.Name, artifact.Alias)
                         .SetColorAsync(artifact.Color)

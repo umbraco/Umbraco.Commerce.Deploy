@@ -45,6 +45,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override IAsyncEnumerable<TaxCalculationMethodReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetTaxCalculationMethodsAsync(storeId).AsAsyncEnumerable();
 
+        public override Task<TaxCalculationMethodReadOnly?> GetExistingEntityAsync(TaxCalculationMethodArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetTaxCalculationMethodAsync(artifact.StoreUdi.Guid, artifact.Alias);
+
         public override Task<TaxCalculationMethodArtifact?> GetArtifactAsync(GuidUdi? udi, TaxCalculationMethodReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
@@ -97,12 +100,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     TaxCalculationMethod? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await TaxCalculationMethod.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name,
-                        artifact.SalesTaxProviderAlias);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name,
+                            artifact.SalesTaxProviderAlias);
 
                     var settings = artifact.SalesTaxProviderSettings
                         .Where(x => !_settingsAccessor.Settings.TaxCalculationMethods.IgnoreSettings.InvariantContains(x.Key)) // Ignore any settings that shouldn't be transferred

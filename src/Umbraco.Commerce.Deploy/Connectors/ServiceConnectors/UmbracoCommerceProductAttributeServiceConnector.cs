@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -46,6 +46,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override IAsyncEnumerable<ProductAttributeReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetProductAttributesAsync(storeId).AsAsyncEnumerable();
+
+        public override Task<ProductAttributeReadOnly?> GetExistingEntityAsync(ProductAttributeArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetProductAttributeAsync(artifact.StoreUdi.Guid, artifact.Alias);
 
         public override Task<ProductAttributeArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributeReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -108,11 +111,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     ProductAttribute? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await ProductAttribute.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name.DefaultValue);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name.DefaultValue);
 
                     await entity.SetAliasAsync(artifact.Alias)
                         .SetNameAsync(new TranslatedValue<string>(artifact.Name.DefaultValue, artifact.Name.Translations))

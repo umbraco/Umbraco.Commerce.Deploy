@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -34,6 +34,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public abstract IAsyncEnumerable<TEntity> GetEntitiesAsync(CancellationToken cancellationToken = default);
 
         public abstract Task<TArtifact?> GetArtifactAsync(GuidUdi? udi, TEntity? entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets an existing entity by its identifying properties from the artifact (e.g., alias or code).
+        /// Used as a fallback when the GUID lookup fails during deployment.
+        /// </summary>
+        /// <param name="artifact">The artifact containing identifying properties.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The existing entity if found; otherwise, null.</returns>
+        public abstract Task<TEntity?> GetExistingEntityAsync(TArtifact artifact, CancellationToken cancellationToken = default);
 
         public override Task<TArtifact> GetArtifactAsync(
             TEntity entity,
@@ -153,7 +162,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         {
             EnsureType(artifact.Udi);
 
+            // First try to find by GUID
             TEntity? entity = await GetEntityAsync(artifact.Udi.Guid, cancellationToken).ConfigureAwait(false);
+
+            // Fallback: try to find by alias/code if GUID lookup failed (handles GUID mismatches during upgrades)
+            entity ??= await GetExistingEntityAsync(artifact, cancellationToken).ConfigureAwait(false);
 
             return ArtifactDeployState.Create(artifact, entity, this, ProcessPasses[0]);
         }

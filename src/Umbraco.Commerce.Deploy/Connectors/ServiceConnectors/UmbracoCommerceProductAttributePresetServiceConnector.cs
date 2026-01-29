@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
@@ -46,6 +46,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override IAsyncEnumerable<ProductAttributePresetReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetProductAttributePresetsAsync(storeId).AsAsyncEnumerable();
+
+        public override Task<ProductAttributePresetReadOnly?> GetExistingEntityAsync(ProductAttributePresetArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetProductAttributePresetAsync(artifact.StoreUdi.Guid, artifact.Alias);
 
         public override async Task<ProductAttributePresetArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributePresetReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -118,11 +121,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     ProductAttributePreset? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await ProductAttributePreset.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name);
 
                     await entity.SetAliasAsync(artifact.Alias)
                         .SetNameAsync(artifact.Name)
