@@ -52,6 +52,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override IAsyncEnumerable<ShippingMethodReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetShippingMethodsAsync(storeId).AsAsyncEnumerable();
 
+        public override Task<ShippingMethodReadOnly?> GetExistingEntityAsync(ShippingMethodArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetShippingMethodAsync(artifact.StoreUdi.Guid, artifact.Alias);
+
         public override Task<ShippingMethodArtifact?> GetArtifactAsync(GuidUdi? udi, ShippingMethodReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
@@ -216,13 +219,13 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     ShippingMethod? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await ShippingMethod.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name,
-                        artifact.ShippingProviderAlias,
-                        (ShippingCalculationMode)artifact.CalculationMode);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name,
+                            artifact.ShippingProviderAlias,
+                            (ShippingCalculationMode)artifact.CalculationMode);
 
                     var settings = artifact.ShippingProviderSettings
                         .Where(x => !_settingsAccessor.Settings.ShippingMethods.IgnoreSettings.InvariantContains(x.Key)) // Ignore any settings that shouldn't be transfered

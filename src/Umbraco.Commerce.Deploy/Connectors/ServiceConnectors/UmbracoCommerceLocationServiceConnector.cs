@@ -44,6 +44,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override IAsyncEnumerable<LocationReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetLocationsAsync(storeId).AsAsyncEnumerable();
 
+        public override Task<LocationReadOnly?> GetExistingEntityAsync(LocationArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetLocationAsync(artifact.StoreUdi.Guid, artifact.Alias);
+
         public override Task<LocationArtifact?> GetArtifactAsync(GuidUdi? udi, LocationReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
@@ -97,11 +100,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.StoreUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     Location? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Location.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.Alias,
-                        artifact.Name);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.Alias,
+                            artifact.Name);
 
                     await entity.SetNameAsync(artifact.Name, artifact.Alias)
                         .SetTypeAsync((LocationType)artifact.Type)

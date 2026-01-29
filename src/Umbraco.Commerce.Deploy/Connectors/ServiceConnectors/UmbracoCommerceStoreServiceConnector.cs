@@ -50,6 +50,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         public override IAsyncEnumerable<StoreReadOnly> GetEntitiesAsync(CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetStoresAsync().AsAsyncEnumerable();
 
+        public override Task<StoreReadOnly?> GetExistingEntityAsync(StoreArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetStoreAsync(artifact.Alias);
+
         public override Task<StoreArtifact?> GetArtifactAsync(GuidUdi? udi, StoreReadOnly? entity, CancellationToken cancellationToken = default)
         {
             if (entity == null)
@@ -221,11 +224,11 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.Udi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Store);
 
                     Store? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Store.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.Alias,
-                        artifact.Name,
-                        false);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.Alias,
+                            artifact.Name,
+                            false);
 
                     await entity.SetNameAsync(artifact.Name, artifact.Alias)
                         .SetThemeSettingsAsync(new StoreThemeSettings{

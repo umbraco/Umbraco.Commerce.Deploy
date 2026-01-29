@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,6 +43,9 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override IAsyncEnumerable<RegionReadOnly> GetEntitiesAsync(Guid storeId, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetRegionsAsync(storeId).AsAsyncEnumerable();
+
+        public override Task<RegionReadOnly?> GetExistingEntityAsync(RegionArtifact artifact, CancellationToken cancellationToken = default)
+            => _umbracoCommerceApi.GetRegionAsync(artifact.StoreUdi.Guid, artifact.CountryUdi.Guid, artifact.Code);
 
         public override Task<RegionArtifact?> GetArtifactAsync(GuidUdi? udi, RegionReadOnly? entity, CancellationToken cancellationToken = default)
         {
@@ -120,12 +123,12 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                     artifact.CountryUdi.EnsureType(UmbracoCommerceConstants.UdiEntityType.Country);
 
                     Region? entity = state.Entity != null ? await state.Entity.AsWritableAsync(uow) : await Region.CreateAsync(
-                        uow,
-                        artifact.Udi.Guid,
-                        artifact.StoreUdi.Guid,
-                        artifact.CountryUdi.Guid,
-                        artifact.Code,
-                        artifact.Name);
+                            uow,
+                            artifact.Udi.Guid,
+                            artifact.StoreUdi.Guid,
+                            artifact.CountryUdi.Guid,
+                            artifact.Code,
+                            artifact.Name);
 
                     await entity.SetNameAsync(artifact.Name)
                         .SetCodeAsync(artifact.Code)
