@@ -118,6 +118,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
                             {
                                 dstDict.Add(currencyEntity.Id, kvp.Value);
                             }
+                            else
+                            {
+                                _logger?.Warn("Could not resolve currency {CurrencyUdi} on the target environment. The price for this currency will be dropped from {PropertyTypeAlias}.", udi.ToString(), propertyType.Alias);
+                            }
                         }
                     }
                 }
