@@ -10,13 +10,15 @@ using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Extensions;
 using Umbraco.Commerce.Cms.PropertyEditors.StorePicker;
+using Umbraco.Commerce.Common.Logging;
 using Umbraco.Deploy.Core.Connectors.ValueConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
     public class UmbracoCommerceStoreEntityPickerValueConnector(
         IDataTypeService dataTypeService,
-        IUmbracoCommerceApi umbracoCommerceApi)
+        IUmbracoCommerceApi umbracoCommerceApi,
+        ILogger<UmbracoCommerceStoreEntityPickerValueConnector> logger)
         : ValueConnectorBase
     {
         public override IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.StoreEntityPicker" };
@@ -74,7 +76,13 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             EntityBase? entity = await GetEntityAsync(udi!.EntityType, udi.Guid, cancellationToken).ConfigureAwait(false);
 
-            return entity != null ? entity.Id.ToString() : null;
+            if (entity == null)
+            {
+                logger.Warn("Could not resolve {EntityType} {EntityUdi} on the target environment. The value for {PropertyTypeAlias} will be dropped.", udi.EntityType, udi.ToString(), propertyType.Alias);
+                return null;
+            }
+
+            return entity.Id.ToString();
         }
 
         private async Task<string?> GetPropertyEntityTypeAsync(IPropertyType propertyType, CancellationToken cancellationToken = default)
