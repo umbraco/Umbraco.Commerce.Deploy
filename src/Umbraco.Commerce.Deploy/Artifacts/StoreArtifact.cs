@@ -71,6 +71,14 @@ namespace Umbraco.Commerce.Deploy.Artifacts
 
         public IEnumerable<string>?AllowedUserRoles { get; set; }
 
+        public bool CommunicationPreferencesEnabled { get; set; }
+
+        public IEnumerable<CommunicationPreferenceArtifact>? CommunicationPreferences { get; set; }
+
+        public IEnumerable<StoreCustomerPropertyArtifact>? CustomerProperties { get; set; }
+
+        public int CustomerIdType { get; set; }
+
         public int SortOrder { get; set; }
     }
 }
