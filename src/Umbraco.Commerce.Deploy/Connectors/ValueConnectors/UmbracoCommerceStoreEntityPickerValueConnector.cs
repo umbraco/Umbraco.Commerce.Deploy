@@ -2,23 +2,34 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Extensions;
 using Umbraco.Commerce.Cms.PropertyEditors.StorePicker;
+using Umbraco.Commerce.Common.Logging;
 using Umbraco.Deploy.Core.Connectors.ValueConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 {
     public class UmbracoCommerceStoreEntityPickerValueConnector(
         IDataTypeService dataTypeService,
-        IUmbracoCommerceApi umbracoCommerceApi)
+        IUmbracoCommerceApi umbracoCommerceApi,
+        ILogger<UmbracoCommerceStoreEntityPickerValueConnector> logger)
         : ValueConnectorBase
     {
+        [Obsolete("Use the constructor that accepts an ILogger instead. Will be removed in v19.0.0")]
+        public UmbracoCommerceStoreEntityPickerValueConnector(
+            IDataTypeService dataTypeService,
+            IUmbracoCommerceApi umbracoCommerceApi)
+            : this(dataTypeService, umbracoCommerceApi, StaticServiceProvider.Instance.GetRequiredService<ILogger<UmbracoCommerceStoreEntityPickerValueConnector>>())
+        { }
+
         public override IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.StoreEntityPicker" };
 
         public override async Task<string?> ToArtifactAsync(
@@ -74,7 +85,13 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             EntityBase? entity = await GetEntityAsync(udi!.EntityType, udi.Guid, cancellationToken).ConfigureAwait(false);
 
-            return entity != null ? entity.Id.ToString() : null;
+            if (entity == null)
+            {
+                logger.Warn("Could not resolve {EntityType} {EntityUdi} on the target environment. The value for {PropertyTypeAlias} will be dropped.", udi.EntityType, udi.ToString(), propertyType.Alias);
+                return null;
+            }
+
+            return entity.Id.ToString();
         }
 
         private async Task<string?> GetPropertyEntityTypeAsync(IPropertyType propertyType, CancellationToken cancellationToken = default)
