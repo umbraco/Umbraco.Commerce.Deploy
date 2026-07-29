@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Umbraco.Commerce.Core.Api;
 using Umbraco.Commerce.Core.Models;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
+using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
 using Umbraco.Extensions;
@@ -21,6 +23,13 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
         ILogger<UmbracoCommerceStoreEntityPickerValueConnector> logger)
         : ValueConnectorBase
     {
+        [Obsolete("Use the constructor that accepts an ILogger instead. Will be removed in v19.0.0")]
+        public UmbracoCommerceStoreEntityPickerValueConnector(
+            IDataTypeService dataTypeService,
+            IUmbracoCommerceApi umbracoCommerceApi)
+            : this(dataTypeService, umbracoCommerceApi, StaticServiceProvider.Instance.GetRequiredService<ILogger<UmbracoCommerceStoreEntityPickerValueConnector>>())
+        { }
+
         public override IEnumerable<string> PropertyEditorAliases => new[] { "Umbraco.Commerce.StoreEntityPicker" };
 
         public override async Task<string?> ToArtifactAsync(
