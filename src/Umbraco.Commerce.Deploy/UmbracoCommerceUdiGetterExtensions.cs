@@ -17,6 +17,7 @@ namespace Umbraco.Commerce.Deploy
                 ShippingMethodReadOnly shippingMethod => shippingMethod.GetUdi(),
                 PaymentMethodReadOnly paymentMethod => paymentMethod.GetUdi(),
                 TaxClassReadOnly taxClass => taxClass.GetUdi(),
+                TaxCalculationMethodReadOnly taxCalculationMethod => taxCalculationMethod.GetUdi(),
                 EmailTemplateReadOnly emailTemplate => emailTemplate.GetUdi(),
                 PrintTemplateReadOnly printTemplate => printTemplate.GetUdi(),
                 ExportTemplateReadOnly exportTemplate => exportTemplate.GetUdi(),
@@ -53,6 +54,9 @@ namespace Umbraco.Commerce.Deploy
 
         public static GuidUdi GetUdi(this TaxClassReadOnly entity)
             => new GuidUdi(UmbracoCommerceConstants.UdiEntityType.TaxClass, entity.Id);
+        
+        public static GuidUdi GetUdi(this TaxCalculationMethodReadOnly entity)
+            => new GuidUdi(UmbracoCommerceConstants.UdiEntityType.TaxCalculationMethod, entity.Id);
 
         public static GuidUdi GetUdi(this EmailTemplateReadOnly entity)
             => new GuidUdi(UmbracoCommerceConstants.UdiEntityType.EmailTemplate, entity.Id);
