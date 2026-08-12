@@ -85,6 +85,14 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 AbandonedCartLandingPageUrl = entity.AbandonedCartLandingPageUrl,
                 AllowedUsers = entity.AllowedUsers.Select(x => x.UserId).ToList(),
                 AllowedUserRoles = entity.AllowedUserRoles.Select(x => x.Role).ToList(),
+                CommunicationPreferencesEnabled = entity.CommunicationPreferencesEnabled,
+                CommunicationPreferences = entity.CommunicationPreferences
+                    .Select(x => new CommunicationPreferenceArtifact { Name = x.Name, Icon = x.Icon })
+                    .ToList(),
+                CustomerProperties = entity.CustomerProperties
+                    .Select(x => new StoreCustomerPropertyArtifact { Alias = x.Alias, Value = x.Value, Placeholder = x.Placeholder })
+                    .ToList(),
+                CustomerIdType = (int)entity.CustomerIdType,
             };
 
             // Base currency
@@ -250,6 +258,13 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                         .SetSortOrderAsync(artifact.SortOrder)
                         .SetAllowedUsersAsync(artifact.AllowedUsers)
                         .SetAllowedUserRolesAsync(artifact.AllowedUserRoles);
+
+                    await entity.SetCommunicationPreferencesEnabledAsync(artifact.CommunicationPreferencesEnabled);
+                    await entity.SetCommunicationPreferencesAsync(artifact.CommunicationPreferences?
+                        .Select(x => new CommunicationPreference(x.Name, x.Icon)));
+                    await entity.SetCustomerPropertiesAsync(artifact.CustomerProperties?
+                        .Select(x => new StoreCustomerProperty(x.Alias, x.Value, x.Placeholder)));
+                    await entity.SetCustomerIdTypeAsync((CustomerIdType)artifact.CustomerIdType);
 
                     if (artifact.CookieTimeout.HasValue)
                     {
