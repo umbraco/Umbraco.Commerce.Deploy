@@ -33,6 +33,7 @@
   <!-- Package validation -->
   <PropertyGroup>
     <GenerateCompatibilitySuppressionFile>false</GenerateCompatibilitySuppressionFile>
+    <!-- Validation off until 19.0.0 is published; post-release re-enables it against that baseline -->
     <EnablePackageValidation>false</EnablePackageValidation>
     <PackageValidationBaselineVersion>19.0.0</PackageValidationBaselineVersion>
     <EnableStrictModeForCompatibleFrameworksInPackage>true</EnableStrictModeForCompatibleFrameworksInPackage>
