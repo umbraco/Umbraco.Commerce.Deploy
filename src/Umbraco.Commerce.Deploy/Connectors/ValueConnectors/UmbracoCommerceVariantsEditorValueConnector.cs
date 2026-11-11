@@ -125,17 +125,8 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             public Guid? StoreId { get; set; }
         }
 
-        public class VariantsBlockEditorLayoutItem : IBlockLayoutItem
+        public class VariantsBlockEditorLayoutItem : BlockLayoutItemBase
         {
-            [Obsolete("Use ContentKey instead. Will be removed in V18.")]
-            public Udi? ContentUdi { get; set; }
-
-            [Obsolete("Use SettingsKey instead. Will be removed in V18.")]
-            public Udi? SettingsUdi { get; set; }
-
-            public Guid ContentKey { get; set; }
-
-            public Guid? SettingsKey { get; set; }
             public ProductVariantConfig Config { get; set; }
         }
 
