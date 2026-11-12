@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Umbraco.Commerce.Core.Api;
@@ -54,13 +57,16 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             try
             {
-                Dictionary<Guid, decimal?>? srcDict = _jsonSerializer.Deserialize<Dictionary<Guid, decimal?>>(svalue);
-
                 var dstDict = new Dictionary<string, decimal?>();
 
-                foreach (KeyValuePair<Guid, decimal?> kvp in srcDict)
+                foreach (KeyValuePair<string, decimal?> kvp in ParsePrices(svalue, propertyType.Alias))
                 {
-                    var udi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, kvp.Key);
+                    if (!Guid.TryParse(kvp.Key, out Guid currencyId))
+                    {
+                        continue;
+                    }
+
+                    var udi = new GuidUdi(UmbracoCommerceConstants.UdiEntityType.Currency, currencyId);
 
                     // Because we store Guid IDs anyway we don't necessarily need to fetch
                     // the Currency entity to look anything up, it's mostly a question
@@ -101,8 +107,7 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
 
             try
             {
-                Dictionary<string, decimal?>? srcDict =
-                    _jsonSerializer.Deserialize<Dictionary<string, decimal?>>(svalue);
+                Dictionary<string, decimal?> srcDict = ParsePrices(svalue, propertyType.Alias);
 
                 var dstDict = new Dictionary<Guid, decimal?>();
 
@@ -132,6 +137,58 @@ namespace Umbraco.Commerce.Deploy.Connectors.ValueConnectors
             {
                 _logger?.Error(ex, "Failed to deserialize price value from artifact: {Value}", svalue);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Reads a price value: a JSON object of currency key to amount. An amount can be a number,
+        /// <c>null</c>, or a string (the editor saves <c>""</c> for a currency with no price), so an
+        /// empty string is read as no price for that currency instead of failing the whole value.
+        /// </summary>
+        private Dictionary<string, decimal?> ParsePrices(string value, string propertyTypeAlias)
+        {
+            var prices = new Dictionary<string, decimal?>();
+
+            if (JsonNode.Parse(value) is not JsonObject json)
+            {
+                return prices;
+            }
+
+            foreach (KeyValuePair<string, JsonNode?> kvp in json)
+            {
+                prices[kvp.Key] = ParseAmount(kvp.Value, kvp.Key, propertyTypeAlias);
+            }
+
+            return prices;
+        }
+
+        private decimal? ParseAmount(JsonNode? node, string currencyKey, string propertyTypeAlias)
+        {
+            if (node is not JsonValue jsonValue)
+            {
+                return null;
+            }
+
+            switch (jsonValue.GetValueKind())
+            {
+                case JsonValueKind.Number:
+                    return jsonValue.GetValue<decimal>();
+                case JsonValueKind.String:
+                    var amount = jsonValue.GetValue<string>();
+                    if (string.IsNullOrWhiteSpace(amount))
+                    {
+                        return null;
+                    }
+
+                    if (decimal.TryParse(amount, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+                    {
+                        return parsed;
+                    }
+
+                    _logger?.Warn("Could not read the price {Amount} for currency {CurrencyKey} in {PropertyTypeAlias}. It will be treated as no price.", amount, currencyKey, propertyTypeAlias);
+                    return null;
+                default:
+                    return null;
             }
         }
     }
