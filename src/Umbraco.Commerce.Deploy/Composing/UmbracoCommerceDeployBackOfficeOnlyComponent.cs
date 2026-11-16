@@ -1,18 +1,24 @@
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 using Umbraco.Cms.Core.Composing;
+using Umbraco.Deploy.Core.Configuration;
+using Umbraco.Deploy.Core.Configuration.DeployConfiguration;
 using Umbraco.Deploy.Infrastructure.Transfer;
 
 namespace Umbraco.Commerce.Deploy.Composing;
 
 /// <summary>
-/// Registers the Commerce settings entities as transfer entity types, so they can be queued for transfer and exported from the backoffice.
+/// Registers the Commerce settings entities as transfer entity types when the Deploy edition is BackOfficeOnly, so they can be
+/// queued for transfer and exported from the backoffice.
 /// </summary>
 /// <remarks>
-/// Only added when the Deploy edition is BackOfficeOnly, the same as Deploy does for its own schema entities.
+/// Deploy does the same for its own schema entities, because the BackOfficeOnly edition has no git-based deployment of the UDA files.
 /// </remarks>
-internal sealed class UmbracoCommerceDeployBackOfficeOnlyComponent(ITransferEntityService transferEntityService)
-    : IAsyncComponent
+internal sealed class UmbracoCommerceDeployBackOfficeOnlyComponent(
+    ITransferEntityService transferEntityService,
+    IOptions<DeploySettings> deploySettings)
+    : AsyncComponentBase
 {
     private static readonly string[] SettingsEntityTypes =
     [
@@ -31,20 +37,20 @@ internal sealed class UmbracoCommerceDeployBackOfficeOnlyComponent(ITransferEnti
         UmbracoCommerceConstants.UdiEntityType.ExportTemplate,
     ];
 
-    public Task InitializeAsync(bool isRestarting, CancellationToken cancellationToken)
+    protected override Task InitializeAsync(CancellationToken cancellationToken)
     {
-        foreach (var entityType in SettingsEntityTypes)
+        if (deploySettings.Value.Edition is Edition.BackOfficeOnly)
         {
-            transferEntityService.RegisterTransferEntityType(entityType, new DeployRegisteredEntityTypeDetailOptions
+            foreach (var entityType in SettingsEntityTypes)
             {
-                SupportsQueueForTransfer = true,
-                SupportsImportExport = true,
-            });
+                transferEntityService.RegisterTransferEntityType(entityType, new DeployRegisteredEntityTypeDetailOptions
+                {
+                    SupportsQueueForTransfer = true,
+                    SupportsImportExport = true,
+                });
+            }
         }
 
         return Task.CompletedTask;
     }
-
-    public Task TerminateAsync(bool isRestarting, CancellationToken cancellationToken)
-        => Task.CompletedTask;
 }
