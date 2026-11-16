@@ -10,11 +10,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Umbraco.Commerce.Extensions;
+using Umbraco.Cms.Core.Models;
+using Umbraco.Deploy.Core.Connectors.ServiceConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset, UdiType.GuidUdi)]
-    public class UmbracoCommerceProductAttributePresetServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ProductAttributePresetArtifact, ProductAttributePresetReadOnly, ProductAttributePreset, ProductAttributePresetState>
+    public class UmbracoCommerceProductAttributePresetServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ProductAttributePresetArtifact, ProductAttributePresetReadOnly, ProductAttributePreset, ProductAttributePresetState>, ITreeServiceConnector
     {
         protected override int[] ProcessPasses => new[]
         {
@@ -49,6 +51,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override Task<ProductAttributePresetReadOnly?> GetExistingEntityAsync(ProductAttributePresetArtifact artifact, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetProductAttributePresetAsync(artifact.StoreUdi.Guid, artifact.Alias);
+
+        /// <inheritdoc />
+        public Task<PagedModel<TreeItem>> GetTreeItemsAsync(Udi? parentUdi = null, string? filter = null, int skip = 0, int take = int.MaxValue, CancellationToken cancellationToken = default)
+            => GetStoreEntityTreeItemsAsync(parentUdi, filter, skip, take, "icon-equalizer", cancellationToken);
 
         public override async Task<ProductAttributePresetArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributePresetReadOnly? entity, CancellationToken cancellationToken = default)
         {
