@@ -10,10 +10,6 @@ using Umbraco.Commerce.Core.Events.Notification;
 using Umbraco.Commerce.Deploy.NotificationHandlers;
 using Umbraco.Commerce.Extensions;
 using Umbraco.Extensions;
-using Umbraco.Deploy.Core;
-using Umbraco.Deploy.Core.Configuration;
-using Umbraco.Deploy.Core.Configuration.DeployConfiguration;
-using Microsoft.Extensions.Configuration;
 
 namespace Umbraco.Commerce.Deploy.Composing
 {
@@ -33,14 +29,8 @@ namespace Umbraco.Commerce.Deploy.Composing
             builder.Services.AddSingleton<UmbracoCommerceDeploySettingsAccessor>();
 
             builder.Components()
-                .Append<UmbracoCommerceDeployComponent>();
-
-            // Deploy makes its own schema entities transfer entity types in the BackOfficeOnly edition, so do the same for the settings entities.
-            // The edition is read from configuration (like Deploy does), because getting the options would validate all Deploy settings.
-            if (builder.Config.GetSection(DeployConstants.ConfigurationSectionKeys.Settings).GetValue<Edition>(nameof(DeploySettings.Edition)) is Edition.BackOfficeOnly)
-            {
-                builder.Components().Append<UmbracoCommerceDeployBackOfficeOnlyComponent>();
-            }
+                .Append<UmbracoCommerceDeployComponent>()
+                .Append<UmbracoCommerceDeployBackOfficeOnlyComponent>();
 
             // Write and delete the UDA files of the settings entities
             IUmbracoCommerceBuilder commerceBuilder = builder.WithUmbracoCommerceBuilder();
