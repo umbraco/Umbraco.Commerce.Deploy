@@ -72,9 +72,6 @@ namespace Umbraco.Commerce.Deploy.Composing
                         });
             });
 
-            builder.Components()
-                .Append<UmbracoCommerceDeployComponent>();
-
             // Write and delete the UDA files of the settings entities
             IUmbracoCommerceBuilder commerceBuilder = builder.WithUmbracoCommerceBuilder();
             commerceBuilder.WithNotificationEvent<StoreSavedNotification>().RegisterHandler<UmbracoCommerceDeployRefresherNotificationHandler>();
