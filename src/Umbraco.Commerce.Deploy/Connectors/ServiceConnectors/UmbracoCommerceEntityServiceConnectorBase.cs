@@ -10,6 +10,7 @@ using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Deploy.Infrastructure.Artifacts;
 using Umbraco.Deploy.Infrastructure.Connectors.ServiceConnectors;
+using DeploySelector = Umbraco.Cms.Core.Constants.DeploySelector;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
@@ -20,6 +21,15 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
         where TArtifact : DeployArtifactBase<GuidUdi>
         where TEntity : EntityBase
     {
+        private static readonly string[] EntitySelectors =
+        [
+            DeploySelector.This,
+            DeploySelector.ThisAndChildren,
+            DeploySelector.ThisAndDescendants,
+            DeploySelector.ChildrenOfThis,
+            DeploySelector.DescendantsOfThis,
+        ];
+
         protected readonly IUmbracoCommerceApi _umbracoCommerceApi = umbracoCommerceApi;
         protected readonly UmbracoCommerceDeploySettingsAccessor _settingsAccessor = settingsAccessor;
 
@@ -73,6 +83,8 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 return new NamedUdiRange(udi, OpenUdiName, selector);
             }
 
+            EnsureEntitySelector(selector);
+
             TEntity? entity = await GetEntityAsync(udi.Guid, cancellationToken).ConfigureAwait(false);
 
             if (entity == null)
@@ -89,10 +101,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             string selector,
             CancellationToken cancellationToken = default)
         {
-            if (sid == "-1" || sid == ContainerId)
+            // Deploy sends an empty GUID for the root, older clients send -1 or the tree container ID
+            if (sid == "-1" || sid == ContainerId || (Guid.TryParse(sid, out Guid emptyId) && emptyId == Guid.Empty))
             {
-                EnsureOpenSelector(selector);
-                return new NamedUdiRange(Udi.Create(UdiEntityType), OpenUdiName, selector);
+                return GetOpenRange(selector);
             }
 
             if (!Guid.TryParse(sid, out Guid result))
@@ -100,27 +112,49 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
                 throw new ArgumentException("Invalid identifier.", nameof(sid));
             }
 
-            // See if the sid is a Store ID, if so, it's a root UDI
+            // Check the entity first, because for the store entity type a store ID is the entity itself
+            TEntity? entity = await GetEntityAsync(result, cancellationToken).ConfigureAwait(false);
+            if (entity != null)
+            {
+                EnsureEntitySelector(selector);
+                return GetRange(entity, selector);
+            }
+
+            // The backoffice collection nodes (e.g. the product attributes of a store) use the store ID, which is the root
             StoreReadOnly? store = await _umbracoCommerceApi.GetStoreAsync(result);
             if (store != null)
             {
-                EnsureOpenSelector(selector);
-                return new NamedUdiRange(Udi.Create(UdiEntityType), OpenUdiName, selector);
+                return GetOpenRange(selector);
             }
 
-            // If it's not a store ID, then is must be an entity ID
-            TEntity? entity = await GetEntityAsync(result, cancellationToken).ConfigureAwait(false);
+            throw new ArgumentException("Could not find an entity with the specified identifier.", nameof(sid));
+        }
 
-            if (entity == null)
-            {
-                throw new ArgumentException("Could not find an entity with the specified identifier.", nameof(sid));
-            }
-
-            return GetRange(entity, selector);
+        private NamedUdiRange GetOpenRange(string selector)
+        {
+            EnsureOpenSelector(selector);
+            return new NamedUdiRange(Udi.Create(UdiEntityType), OpenUdiName, selector);
         }
 
         private NamedUdiRange GetRange(TEntity e, string selector)
             => new(e.GetUdi(), GetEntityName(e), selector);
+
+        /// <summary>
+        /// Ensures the selector is valid for an entity (not the root): the entities are flat, so the selectors for children or
+        /// descendants are valid, but empty.
+        /// </summary>
+        /// <param name="selector">The selector.</param>
+        /// <exception cref="NotSupportedException">The selector isn't valid for an entity.</exception>
+        private static void EnsureEntitySelector(string selector)
+        {
+            if (!EntitySelectors.Contains(selector))
+            {
+                throw new NotSupportedException($"Unexpected selector \"{selector}\".");
+            }
+        }
+
+        private static bool SelectorIncludesEntity(string selector)
+            => selector is DeploySelector.This or DeploySelector.ThisAndChildren or DeploySelector.ThisAndDescendants;
 
         public override async IAsyncEnumerable<GuidUdi?> ExpandRangeAsync(
             UdiRange range,
@@ -139,16 +173,19 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
             }
             else
             {
+                EnsureEntitySelector(range.Selector);
+
+                // The entities don't have children, so only the selectors that include the entity itself return it
+                if (!SelectorIncludesEntity(range.Selector))
+                {
+                    yield break;
+                }
+
                 TEntity? entity = await GetEntityAsync(((GuidUdi)range.Udi).Guid, cancellationToken).ConfigureAwait(false);
 
                 if (entity == null)
                 {
                     yield break;
-                }
-
-                if (range.Selector != "this")
-                {
-                    throw new NotSupportedException("Unexpected selector \"" + range.Selector + "\".");
                 }
 
                 yield return entity.GetUdi();

@@ -1,14 +1,9 @@
-using System;
-using Umbraco.Commerce.Core.Events;
-using Umbraco.Commerce.Core.Models;
 using Umbraco.Cms.Core.Composing;
-using Umbraco.Cms.Core.Deploy;
 using Umbraco.Deploy.Infrastructure.Disk;
 using Umbraco.Deploy.Core.Connectors.ServiceConnectors;
 using Umbraco.Cms.Core;
 using System.Threading;
 using System.Threading.Tasks;
-using Umbraco.Deploy.Core;
 
 namespace Umbraco.Commerce.Deploy.Composing;
 
@@ -20,7 +15,6 @@ public class UmbracoCommerceDeployComponent(
     public Task InitializeAsync(bool isRestarting, CancellationToken cancellationToken)
     {
         RegisterUdiTypes();
-        InitializeDiskRefreshers();
 
         return Task.CompletedTask;
     }
@@ -45,99 +39,5 @@ public class UmbracoCommerceDeployComponent(
         UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ExportTemplate, UdiType.GuidUdi);
         UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ProductAttribute, UdiType.GuidUdi);
         UdiParser.RegisterUdiType(UmbracoCommerceConstants.UdiEntityType.ProductAttributePreset, UdiType.GuidUdi);
-    }
-
-    private void InitializeDiskRefreshers()
-    {
-        // TODO: Other entities
-
-        // Stores
-        EventHub.NotificationEvents.OnStoreSaved((e) => WriteEntityArtifact(e.Store));
-        EventHub.NotificationEvents.OnStoreDeleted((e) => DeleteEntityArtifact(e.Store));
-
-        // Location
-        EventHub.NotificationEvents.OnLocationSaved((e) => WriteEntityArtifact(e.Location));
-        EventHub.NotificationEvents.OnLocationDeleted((e) => DeleteEntityArtifact(e.Location));
-
-        // OrderStatus
-        EventHub.NotificationEvents.OnOrderStatusSaved((e) => WriteEntityArtifact(e.OrderStatus));
-        EventHub.NotificationEvents.OnOrderStatusDeleted((e) => DeleteEntityArtifact(e.OrderStatus));
-
-        // ShippingMethod
-        EventHub.NotificationEvents.OnShippingMethodSaved((e) => WriteEntityArtifact(e.ShippingMethod));
-        EventHub.NotificationEvents.OnShippingMethodDeleted((e) => DeleteEntityArtifact(e.ShippingMethod));
-
-        // PaymentMethod
-        EventHub.NotificationEvents.OnPaymentMethodSaved((e) => WriteEntityArtifact(e.PaymentMethod));
-        EventHub.NotificationEvents.OnPaymentMethodDeleted((e) => DeleteEntityArtifact(e.PaymentMethod));
-
-        // Country
-        EventHub.NotificationEvents.OnCountrySaved((e) => WriteEntityArtifact(e.Country));
-        EventHub.NotificationEvents.OnCountryDeleted((e) => DeleteEntityArtifact(e.Country));
-
-        // Region
-        EventHub.NotificationEvents.OnRegionSaved((e) => WriteEntityArtifact(e.Region));
-        EventHub.NotificationEvents.OnRegionDeleted((e) => DeleteEntityArtifact(e.Region));
-
-        // Currency
-        EventHub.NotificationEvents.OnCurrencySaved((e) => WriteEntityArtifact(e.Currency));
-        EventHub.NotificationEvents.OnCurrencyDeleted((e) => DeleteEntityArtifact(e.Currency));
-
-        // TaxClass
-        EventHub.NotificationEvents.OnTaxClassSaved((e) => WriteEntityArtifact(e.TaxClass));
-        EventHub.NotificationEvents.OnTaxClassDeleted((e) => DeleteEntityArtifact(e.TaxClass));
-
-        // TaxCalculationMethod
-        EventHub.NotificationEvents.OnTaxCalculationMethodSaved((e) => WriteEntityArtifact(e.TaxCalculationMethod));
-        EventHub.NotificationEvents.OnTaxCalculationMethodDeleted((e) => DeleteEntityArtifact(e.TaxCalculationMethod));
-
-        // EmailTemplate
-        EventHub.NotificationEvents.OnEmailTemplateSaved((e) => WriteEntityArtifact(e.EmailTemplate));
-        EventHub.NotificationEvents.OnEmailTemplateDeleted((e) => DeleteEntityArtifact(e.EmailTemplate));
-
-        // PrintTemplate
-        EventHub.NotificationEvents.OnPrintTemplateSaved((e) => WriteEntityArtifact(e.PrintTemplate));
-        EventHub.NotificationEvents.OnPrintTemplateDeleted((e) => DeleteEntityArtifact(e.PrintTemplate));
-
-        // ExportTemplate
-        EventHub.NotificationEvents.OnExportTemplateSaved((e) => WriteEntityArtifact(e.ExportTemplate));
-        EventHub.NotificationEvents.OnExportTemplateDeleted((e) => DeleteEntityArtifact(e.ExportTemplate));
-
-        // TODO: Other entity events
-    }
-
-    private void WriteEntityArtifact(EntityBase entity) =>
-        AsyncHelper.RunSync(async () =>
-        {
-            IArtifact? artifact = await GetEntityArtifactAsync(entity).ConfigureAwait(false);
-            if (artifact != null)
-            {
-                await diskEntityService.WriteArtifactsAsync(new[] { artifact! }).ConfigureAwait(false);
-            }
-        });
-
-    private void DeleteEntityArtifact(EntityBase entity) =>
-        AsyncHelper.RunSync(async () =>
-        {
-            IArtifact? artifact = await GetEntityArtifactAsync(entity).ConfigureAwait(false);
-            if (artifact != null)
-            {
-                diskEntityService.DeleteArtifacts(new[] { artifact! });
-            }
-        });
-
-    private async Task<IArtifact?> GetEntityArtifactAsync(EntityBase entity)
-    {
-        GuidUdi? udi = entity.GetUdi();
-
-        if (udi == null)
-        {
-            return null;
-        }
-
-        return await serviceConnectorFactory
-            .GetConnector(udi.EntityType)
-            .GetArtifactAsync(entity, new DictionaryCache())
-            .ConfigureAwait(false);
     }
 }

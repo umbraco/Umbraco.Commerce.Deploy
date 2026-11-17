@@ -10,11 +10,13 @@ using Umbraco.Commerce.Deploy.Configuration;
 using Umbraco.Cms.Core;
 using Umbraco.Cms.Core.Deploy;
 using Umbraco.Commerce.Extensions;
+using Umbraco.Cms.Core.Models;
+using Umbraco.Deploy.Core.Connectors.ServiceConnectors;
 
 namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 {
     [UdiDefinition(UmbracoCommerceConstants.UdiEntityType.ProductAttribute, UdiType.GuidUdi)]
-    public class UmbracoCommerceProductAttributeServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ProductAttributeArtifact, ProductAttributeReadOnly, ProductAttribute, ProductAttributeState>
+    public class UmbracoCommerceProductAttributeServiceConnector : UmbracoCommerceStoreEntityServiceConnectorBase<ProductAttributeArtifact, ProductAttributeReadOnly, ProductAttribute, ProductAttributeState>, ITreeServiceConnector
     {
         protected override int[] ProcessPasses => new[]
         {
@@ -49,6 +51,10 @@ namespace Umbraco.Commerce.Deploy.Connectors.ServiceConnectors
 
         public override Task<ProductAttributeReadOnly?> GetExistingEntityAsync(ProductAttributeArtifact artifact, CancellationToken cancellationToken = default)
             => _umbracoCommerceApi.GetProductAttributeAsync(artifact.StoreUdi.Guid, artifact.Alias);
+
+        /// <inheritdoc />
+        public Task<PagedModel<TreeItem>> GetTreeItemsAsync(Udi? parentUdi = null, string? filter = null, int skip = 0, int take = int.MaxValue, CancellationToken cancellationToken = default)
+            => GetStoreEntityTreeItemsAsync(parentUdi, filter, skip, take, "icon-tag", cancellationToken);
 
         public override Task<ProductAttributeArtifact?> GetArtifactAsync(GuidUdi? udi, ProductAttributeReadOnly? entity, CancellationToken cancellationToken = default)
         {
